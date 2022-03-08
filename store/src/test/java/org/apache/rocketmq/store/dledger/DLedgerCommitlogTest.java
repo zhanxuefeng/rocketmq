@@ -43,6 +43,8 @@ import org.junit.Test;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
+import static org.apache.rocketmq.store.StoreTestUtil.releaseMmapFilesOnWindows;
+
 public class DLedgerCommitlogTest extends MessageStoreTestBase {
 
 
@@ -67,6 +69,7 @@ public class DLedgerCommitlogTest extends MessageStoreTestBase {
             Assert.assertEquals(0, messageStore.dispatchBehindBytes());
             doGetMessages(messageStore, topic, 0, 2000, 0);
             messageStore.shutdown();
+            releaseMmapFilesOnWindows(dLedgerMmapFileStore.getDataFileList().getMappedFiles());
         }
 
         {
@@ -83,6 +86,7 @@ public class DLedgerCommitlogTest extends MessageStoreTestBase {
             Assert.assertEquals(0, messageStore.dispatchBehindBytes());
             doGetMessages(messageStore, topic, 0, 1700, 0);
             messageStore.shutdown();
+            releaseMmapFilesOnWindows(dLedgerMmapFileStore.getDataFileList().getMappedFiles());
         }
         {
             //Abnormal recover, left none commitlogs
@@ -370,6 +374,7 @@ public class DLedgerCommitlogTest extends MessageStoreTestBase {
         await().atMost(10, SECONDS).until(followerCatchesUp(followerStore, topic));
 
         Assert.assertEquals(1, leaderStore.getMaxOffsetInQueue(topic, 0));
+        Assert.assertEquals(1, followerStore.getMaxOffsetInQueue(topic, 0));
         Assert.assertTrue(leaderStore.getCommitLog().getMaxOffset() > 0);
 
 
