@@ -66,7 +66,13 @@ import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 public class NettyRemotingServer extends NettyRemotingAbstract implements RemotingServer {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(RemotingHelper.ROCKETMQ_REMOTING);
     private final ServerBootstrap serverBootstrap;
+    // 线程数量默认为3，可根据serverSelectorThreads配置
+    // 负责监听网络数据的读写事件
+    // 线程名称为：NettyServerEPOLLSelector_%d_%d(linux)/NettyServerNIOSelector_%d_%d(windows)
     private final EventLoopGroup eventLoopGroupSelector;
+    // Reactor线程模型，线程数量为1
+    // 负责监听TCP网络连接请求，建立好连接，创建SocketChannel，并注册到selector上
+    // 线程名称为NettyEPOLLBoss_%d(linux)/NettyNIOBoss_%d(windows)
     private final EventLoopGroup eventLoopGroupBoss;
     private final NettyServerConfig nettyServerConfig;
 
@@ -74,6 +80,9 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     private final ChannelEventListener channelEventListener;
 
     private final Timer timer = new Timer("ServerHouseKeepingService", true);
+
+    // 线程数量默认为8，可通过serverWorkerThreads指定
+    //负责SSL验证、编解码、空闲检查、网络连接管理、接收网络请求
     private DefaultEventExecutorGroup defaultEventExecutorGroup;
 
 
@@ -100,11 +109,13 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         this.nettyServerConfig = nettyServerConfig;
         this.channelEventListener = channelEventListener;
 
+        // serverCallbackExecutorThreads 默认0
         int publicThreadNums = nettyServerConfig.getServerCallbackExecutorThreads();
         if (publicThreadNums <= 0) {
             publicThreadNums = 4;
         }
 
+        // 默认为4个线程
         this.publicExecutor = Executors.newFixedThreadPool(publicThreadNums, new ThreadFactory() {
             private AtomicInteger threadIndex = new AtomicInteger(0);
 
@@ -124,6 +135,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                 }
             });
 
+            // 默认为3个线程
             this.eventLoopGroupSelector = new EpollEventLoopGroup(nettyServerConfig.getServerSelectorThreads(), new ThreadFactory() {
                 private AtomicInteger threadIndex = new AtomicInteger(0);
                 private int threadTotal = nettyServerConfig.getServerSelectorThreads();
@@ -182,6 +194,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     @Override
     public void start() {
         this.defaultEventExecutorGroup = new DefaultEventExecutorGroup(
+                // serverWorkerThreads 默认为8
             nettyServerConfig.getServerWorkerThreads(),
             new ThreadFactory() {
 
@@ -197,19 +210,34 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
         ServerBootstrap childHandler =
             this.serverBootstrap.group(this.eventLoopGroupBoss, this.eventLoopGroupSelector)
+                    // linux服务上使用EPOLL
                 .channel(useEpoll() ? EpollServerSocketChannel.class : NioServerSocketChannel.class)
                 .option(ChannelOption.SO_BACKLOG, 1024)
                 .option(ChannelOption.SO_REUSEADDR, true)
                 .option(ChannelOption.SO_KEEPALIVE, false)
                 .childOption(ChannelOption.TCP_NODELAY, true)
+                    //com.rocketmq.remoting.socket.sndbuf.size 默认65535
                 .childOption(ChannelOption.SO_SNDBUF, nettyServerConfig.getServerSocketSndBufSize())
+                    // com.rocketmq.remoting.socket.rcvbuf.size 默认65535
                 .childOption(ChannelOption.SO_RCVBUF, nettyServerConfig.getServerSocketRcvBufSize())
+                    // 10911
                 .localAddress(new InetSocketAddress(this.nettyServerConfig.getListenPort()))
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         ch.pipeline()
+                                // tls handler
                             .addLast(defaultEventExecutorGroup, HANDSHAKE_HANDLER_NAME, handshakeHandler)
+                                // outBoundHandler
+                                // 编码器，将RemotingCommand对象转换为ByteBuf对象
+                                // inBoundHandler
+                                // 解码器 将ByteBuf对象转换为RemotingCommand对象
+                                // duplexHandler
+                                // 心跳检测，serverChannelMaxIdleTimeSeconds 默认120s
+                                // duplexHandler
+                                // 处理channelActive channelInactive idle exception，事件发生时，交给相应的listener处理
+                                // inBoundHandler
+                                // 处理各种客户端的请求
                             .addLast(defaultEventExecutorGroup,
                                 encoder,
                                 new NettyDecoder(),
@@ -220,6 +248,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                     }
                 });
 
+        // serverPooledByteBufAllocatorEnable 默认true
         if (nettyServerConfig.isServerPooledByteBufAllocatorEnable()) {
             childHandler.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         }

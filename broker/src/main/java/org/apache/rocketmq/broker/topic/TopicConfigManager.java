@@ -153,6 +153,7 @@ public class TopicConfigManager extends ConfigManager {
         return this.topicConfigTable.get(topic);
     }
 
+    // 当topic不存在的时候，创建topic
     public TopicConfig createTopicInSendMessageMethod(final String topic, final String defaultTopic,
         final String remoteAddress, final int clientDefaultTopicQueueNums, final int topicSysFlag) {
         TopicConfig topicConfig = null;
@@ -165,6 +166,7 @@ public class TopicConfigManager extends ConfigManager {
                     if (topicConfig != null)
                         return topicConfig;
 
+                    // 获取TBW102的TopicConfig信息
                     TopicConfig defaultTopicConfig = this.topicConfigTable.get(defaultTopic);
                     if (defaultTopicConfig != null) {
                         if (defaultTopic.equals(TopicValidator.AUTO_CREATE_TOPIC_KEY_TOPIC)) {
@@ -173,6 +175,7 @@ public class TopicConfigManager extends ConfigManager {
                             }
                         }
 
+                        // 创建新的topic
                         if (PermName.isInherited(defaultTopicConfig.getPerm())) {
                             topicConfig = new TopicConfig(topic);
 
@@ -208,6 +211,7 @@ public class TopicConfigManager extends ConfigManager {
 
                         createNew = true;
 
+                        // 持久化topic信息到topics.json文件
                         this.persist();
                     }
                 } finally {

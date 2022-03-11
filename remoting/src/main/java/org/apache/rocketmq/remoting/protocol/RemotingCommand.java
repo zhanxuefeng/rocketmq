@@ -208,13 +208,16 @@ public class RemotingCommand {
         return true;
     }
 
+    // 第一个字节放序列化类型，后三个字节放int数据
+    // 长度数据不够大，三个字节足够存储？
+    // 长度为header数据的长度
     public static byte[] markProtocolType(int source, SerializeType type) {
         byte[] result = new byte[4];
 
-        result[0] = type.getCode();
-        result[1] = (byte) ((source >> 16) & 0xFF);
-        result[2] = (byte) ((source >> 8) & 0xFF);
-        result[3] = (byte) (source & 0xFF);
+        result[0] = type.getCode(); // 第一个字节放序列化类型
+        result[1] = (byte) ((source >> 16) & 0xFF); // 右移2个字节，取int的4个字节的第2个字节
+        result[2] = (byte) ((source >> 8) & 0xFF); // 右移1个字节，取int的4个字节的第3个字节
+        result[3] = (byte) (source & 0xFF); // 取int的4个字节的第4个字节
         return result;
     }
 
@@ -231,6 +234,7 @@ public class RemotingCommand {
         this.customHeader = customHeader;
     }
 
+    // 通用的解码CommandCustomHeader过程，从extFields中取出字段属性与key值相同的属性，构建CommandCustomHeader
     public CommandCustomHeader decodeCommandCustomHeader(
         Class<? extends CommandCustomHeader> classHeader) throws RemotingCommandException {
         CommandCustomHeader objectHeader;
@@ -359,15 +363,21 @@ public class RemotingCommand {
         return result;
     }
 
+    // 首先将customHeader中的数据放入extFields属性中存储
+    // 可能是由于customHeader类型多种多样，不适合反序列化，所以该属性不做序列化，将数据存入extFields中
+    // 随后序列化header，因此序列化中的数据包含customHeader中的数据
     private byte[] headerEncode() {
+        // 将customHeader中的数据放入到extFields属性中
         this.makeCustomHeaderToNet();
         if (SerializeType.ROCKETMQ == serializeTypeCurrentRPC) {
             return RocketMQSerializable.rocketMQProtocolEncode(this);
         } else {
+            // json格式的序列化
             return RemotingSerializable.encode(this);
         }
     }
 
+    // 将customHeader中的数据放入extFields中用于序列化
     public void makeCustomHeaderToNet() {
         if (this.customHeader != null) {
             Field[] fields = getClazzFields(customHeader.getClass());
@@ -400,9 +410,10 @@ public class RemotingCommand {
         return encodeHeader(this.body != null ? this.body.length : 0);
     }
 
+    // 序列化header，这里面不包括body的数据，只含有body的长度数据
     public ByteBuffer encodeHeader(final int bodyLength) {
         // 1> header length size
-        int length = 4;
+        int length = 4; // 前面四个字节包含了本次发送数据的总的长度，包含protocolType4个字节+header长度+body长度
 
         // 2> header data length
         byte[] headerData;
@@ -416,6 +427,7 @@ public class RemotingCommand {
         ByteBuffer result = ByteBuffer.allocate(4 + length - bodyLength);
 
         // length
+        // 前面的4个字节为后续数据的长度，不包含自身的4个字节
         result.putInt(length);
 
         // header length

@@ -559,6 +559,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     public void registerProcessor(int requestCode, NettyRequestProcessor processor, ExecutorService executor) {
         ExecutorService executorThis = executor;
         if (null == executor) {
+            // 默认4个线程的线程池，线程名为NettyClientPublicExecutor_，用于业务逻辑处理
             executorThis = this.publicExecutor;
         }
 

@@ -266,10 +266,12 @@ public class BrokerController {
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
+                    // 1
                 this.brokerConfig.getSendMessageThreadPoolNums(),
                 this.brokerConfig.getSendMessageThreadPoolNums(),
                 1000 * 60,
                 TimeUnit.MILLISECONDS,
+                // LinkedBlockingQueue sendThreadPoolQueueCapacity 默认10000
                 this.sendThreadPoolQueue,
                 new ThreadFactoryImpl("SendMessageThread_"));
 
@@ -442,10 +444,15 @@ public class BrokerController {
             if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
                 // Register a listener to reload SslContext
                 try {
+                    // 根据文件数据的md5判断文件是否被更改过，如果有更改，则重新加载
+                    // 默认500ms扫描计算文件md5
                     fileWatchService = new FileWatchService(
                         new String[] {
+                                // tls.server.certPath
                             TlsSystemConfig.tlsServerCertPath,
+                                // tls.server.keyPath
                             TlsSystemConfig.tlsServerKeyPath,
+                                // tls.server.trustCertPath
                             TlsSystemConfig.tlsServerTrustCertPath
                         },
                         new FileWatchService.Listener() {
@@ -507,6 +514,7 @@ public class BrokerController {
             return;
         }
 
+        // spi
         List<AccessValidator> accessValidators = ServiceProvider.load(ServiceProvider.ACL_VALIDATOR_ID, AccessValidator.class);
         if (accessValidators == null || accessValidators.isEmpty()) {
             log.info("The broker dose not load the AccessValidator");
@@ -929,8 +937,11 @@ public class BrokerController {
     }
 
     public synchronized void registerBrokerAll(final boolean checkOrderConfig, boolean oneway, boolean forceRegister) {
+        // 包含topicConfigTable和dataVersion，该数据为从rootDir/config/topics.json文件加载
         TopicConfigSerializeWrapper topicConfigWrapper = this.getTopicConfigManager().buildTopicConfigSerializeWrapper();
 
+        // 默认 read&write
+        // 如果brokerPermission为不可读或者不可写，则更新topic的perm
         if (!PermName.isWriteable(this.getBrokerConfig().getBrokerPermission())
             || !PermName.isReadable(this.getBrokerConfig().getBrokerPermission())) {
             ConcurrentHashMap<String, TopicConfig> topicConfigTable = new ConcurrentHashMap<String, TopicConfig>();
