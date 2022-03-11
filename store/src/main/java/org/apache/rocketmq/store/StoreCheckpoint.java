@@ -36,6 +36,11 @@ public class StoreCheckpoint {
     private volatile long logicsMsgTimestamp = 0;
     private volatile long indexMsgTimestamp = 0;
 
+    // 文件占用4k个字节
+    // 只用到了前24个字节
+    // 前八个字节存储commitLog文件刷盘时间点
+    // 中八个字节存储consumeQueue文件刷盘时间点
+    // 后八个字节存储index文件刷盘时间点
     public StoreCheckpoint(final String scpPath) throws IOException {
         File file = new File(scpPath);
         MappedFile.ensureDirOK(file.getParent());
@@ -43,6 +48,7 @@ public class StoreCheckpoint {
 
         this.randomAccessFile = new RandomAccessFile(file, "rw");
         this.fileChannel = this.randomAccessFile.getChannel();
+        // 4k
         this.mappedByteBuffer = fileChannel.map(MapMode.READ_WRITE, 0, MappedFile.OS_PAGE_SIZE);
 
         if (fileExists) {

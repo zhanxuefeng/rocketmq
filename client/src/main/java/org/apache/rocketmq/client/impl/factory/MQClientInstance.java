@@ -160,6 +160,7 @@ public class MQClientInstance {
     public static TopicPublishInfo topicRouteData2TopicPublishInfo(final String topic, final TopicRouteData route) {
         TopicPublishInfo info = new TopicPublishInfo();
         info.setTopicRouteData(route);
+        // 好像是自定义MessageQueue排序规则？
         if (route.getOrderTopicConf() != null && route.getOrderTopicConf().length() > 0) {
             String[] brokers = route.getOrderTopicConf().split(";");
             for (String broker : brokers) {
@@ -174,10 +175,13 @@ public class MQClientInstance {
             info.setOrderTopic(true);
         } else {
             List<QueueData> qds = route.getQueueDatas();
+            // 根据brokerName来排序
             Collections.sort(qds);
             for (QueueData qd : qds) {
+                // 判断Queue是否可写
                 if (PermName.isWriteable(qd.getPerm())) {
                     BrokerData brokerData = null;
+                    // 遍历BrokerDatas，找到该Queue所在的Broker
                     for (BrokerData bd : route.getBrokerDatas()) {
                         if (bd.getBrokerName().equals(qd.getBrokerName())) {
                             brokerData = bd;
@@ -185,14 +189,17 @@ public class MQClientInstance {
                         }
                     }
 
+                    // 如果找不到对应的Broker，则丢弃该Queue
                     if (null == brokerData) {
                         continue;
                     }
 
+                    // 如果该Broker没有master，则丢弃该Queue
                     if (!brokerData.getBrokerAddrs().containsKey(MixAll.MASTER_ID)) {
                         continue;
                     }
 
+                    // 根据Queue的writeQueueNums来构建MessageQueue对象，queueId=0,queueId=1,...,queueId=n
                     for (int i = 0; i < qd.getWriteQueueNums(); i++) {
                         MessageQueue mq = new MessageQueue(topic, qd.getBrokerName(), i);
                         info.getMessageQueueList().add(mq);
@@ -623,6 +630,7 @@ public class MQClientInstance {
                     }
                     if (topicRouteData != null) {
                         TopicRouteData old = this.topicRouteTable.get(topic);
+                        // 判断新获取的路由信息与原始存储的路由信息是否一致
                         boolean changed = topicRouteDataIsChange(old, topicRouteData);
                         if (!changed) {
                             changed = this.isNeedUpdateTopicRouteInfo(topic);
@@ -633,6 +641,7 @@ public class MQClientInstance {
                         if (changed) {
                             TopicRouteData cloneTopicRouteData = topicRouteData.cloneTopicRouteData();
 
+                            // 找到路由信息之后，缓存broker信息 brokerName:brokerAddrs（包含master和slave）
                             for (BrokerData bd : topicRouteData.getBrokerDatas()) {
                                 this.brokerAddrTable.put(bd.getBrokerName(), bd.getBrokerAddrs());
                             }
@@ -1001,6 +1010,7 @@ public class MQClientInstance {
         return null;
     }
 
+    // 查找master对应的brokerAddr（localhost:10911)
     public String findBrokerAddressInPublish(final String brokerName) {
         HashMap<Long/* brokerId */, String/* address */> map = this.brokerAddrTable.get(brokerName);
         if (map != null && !map.isEmpty()) {

@@ -24,12 +24,14 @@ public class ThreadLocalIndex {
     private final Random random = new Random();
 
     public int incrementAndGet() {
+        // 如果线程本地变量中没有值，则随机生成一个
         Integer index = this.threadLocalIndex.get();
         if (null == index) {
             index = Math.abs(random.nextInt());
             this.threadLocalIndex.set(index);
         }
 
+        // 如果线程本地变量中存在值，则+=1
         this.threadLocalIndex.set(++index);
         return Math.abs(index);
     }

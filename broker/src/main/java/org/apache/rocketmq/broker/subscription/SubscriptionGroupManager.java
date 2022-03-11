@@ -48,26 +48,39 @@ public class SubscriptionGroupManager extends ConfigManager {
         this.init();
     }
 
+    /**
+     * TOOLS_CONSUMER
+     * FILTERSRV_CONSUMER
+     * SELF_TEST_C_GROUP
+     * CID_ONS-HTTP-PROXY
+     * CID_ONSAPI_PULL
+     * CID_ONSAPI_PERMISSION
+     * CID_ONSAPI_OWNER
+     */
     private void init() {
         {
+            // TOOLS_CONSUMER
             SubscriptionGroupConfig subscriptionGroupConfig = new SubscriptionGroupConfig();
             subscriptionGroupConfig.setGroupName(MixAll.TOOLS_CONSUMER_GROUP);
             this.subscriptionGroupTable.put(MixAll.TOOLS_CONSUMER_GROUP, subscriptionGroupConfig);
         }
 
         {
+            // FILTERSRV_CONSUMER
             SubscriptionGroupConfig subscriptionGroupConfig = new SubscriptionGroupConfig();
             subscriptionGroupConfig.setGroupName(MixAll.FILTERSRV_CONSUMER_GROUP);
             this.subscriptionGroupTable.put(MixAll.FILTERSRV_CONSUMER_GROUP, subscriptionGroupConfig);
         }
 
         {
+            // SELF_TEST_C_GROUP
             SubscriptionGroupConfig subscriptionGroupConfig = new SubscriptionGroupConfig();
             subscriptionGroupConfig.setGroupName(MixAll.SELF_TEST_CONSUMER_GROUP);
             this.subscriptionGroupTable.put(MixAll.SELF_TEST_CONSUMER_GROUP, subscriptionGroupConfig);
         }
 
         {
+            // CID_ONS-HTTP-PROXY
             SubscriptionGroupConfig subscriptionGroupConfig = new SubscriptionGroupConfig();
             subscriptionGroupConfig.setGroupName(MixAll.ONS_HTTP_PROXY_GROUP);
             subscriptionGroupConfig.setConsumeBroadcastEnable(true);
@@ -75,6 +88,7 @@ public class SubscriptionGroupManager extends ConfigManager {
         }
 
         {
+            // CID_ONSAPI_PULL
             SubscriptionGroupConfig subscriptionGroupConfig = new SubscriptionGroupConfig();
             subscriptionGroupConfig.setGroupName(MixAll.CID_ONSAPI_PULL_GROUP);
             subscriptionGroupConfig.setConsumeBroadcastEnable(true);
@@ -82,6 +96,7 @@ public class SubscriptionGroupManager extends ConfigManager {
         }
 
         {
+            // CID_ONSAPI_PERMISSION
             SubscriptionGroupConfig subscriptionGroupConfig = new SubscriptionGroupConfig();
             subscriptionGroupConfig.setGroupName(MixAll.CID_ONSAPI_PERMISSION_GROUP);
             subscriptionGroupConfig.setConsumeBroadcastEnable(true);
@@ -89,6 +104,7 @@ public class SubscriptionGroupManager extends ConfigManager {
         }
 
         {
+            // CID_ONSAPI_OWNER
             SubscriptionGroupConfig subscriptionGroupConfig = new SubscriptionGroupConfig();
             subscriptionGroupConfig.setGroupName(MixAll.CID_ONSAPI_OWNER_GROUP);
             subscriptionGroupConfig.setConsumeBroadcastEnable(true);

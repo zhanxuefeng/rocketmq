@@ -47,6 +47,7 @@ public class TopicConfigManager extends ConfigManager {
 
     private transient final Lock topicConfigTableLock = new ReentrantLock();
 
+    // broker上topic缓存
     private final ConcurrentMap<String, TopicConfig> topicConfigTable =
         new ConcurrentHashMap<String, TopicConfig>(1024);
     private final DataVersion dataVersion = new DataVersion();
@@ -55,9 +56,26 @@ public class TopicConfigManager extends ConfigManager {
     public TopicConfigManager() {
     }
 
+    /**
+     * 添加一系列的sys topic
+     *
+     * SELF_TEST_TOPIC
+     * TBW102（autoCreateTopicEnable=true时添加）
+     * BenchmarkTest
+     * clusterName（eg：DefaultCluster）
+     * brokerName（eg：broker-a）
+     * OFFSET_MOVED_EVENT
+     * RMQ_SYS_TRACE_TOPIC
+     *
+     *
+     * @param brokerController
+     */
     public TopicConfigManager(BrokerController brokerController) {
         this.brokerController = brokerController;
         {
+            //添加SELF_TEST_TOPIC topic
+            // MixAll.SELF_TEST_TOPIC
+            // 干啥用的
             String topic = TopicValidator.RMQ_SYS_SELF_TEST_TOPIC;
             TopicConfig topicConfig = new TopicConfig(topic);
             TopicValidator.addSystemTopic(topic);
@@ -66,20 +84,27 @@ public class TopicConfigManager extends ConfigManager {
             this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
         }
         {
+            // MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC
+            // 如果开启了自动创建topic，则添加TBW102 topic（很重要）
             if (this.brokerController.getBrokerConfig().isAutoCreateTopicEnable()) {
                 String topic = TopicValidator.AUTO_CREATE_TOPIC_KEY_TOPIC;
                 TopicConfig topicConfig = new TopicConfig(topic);
                 TopicValidator.addSystemTopic(topic);
+                // readQueueNums: 8
                 topicConfig.setReadQueueNums(this.brokerController.getBrokerConfig()
                     .getDefaultTopicQueueNums());
+                // writeQueueNums: 8
                 topicConfig.setWriteQueueNums(this.brokerController.getBrokerConfig()
                     .getDefaultTopicQueueNums());
+                // perm: 7
                 int perm = PermName.PERM_INHERIT | PermName.PERM_READ | PermName.PERM_WRITE;
                 topicConfig.setPerm(perm);
                 this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
             }
         }
         {
+            // MixAll.BENCHMARK_TOPIC
+            // 添加BenchmarkTest topic
             String topic = TopicValidator.RMQ_SYS_BENCHMARK_TOPIC;
             TopicConfig topicConfig = new TopicConfig(topic);
             TopicValidator.addSystemTopic(topic);
@@ -89,11 +114,16 @@ public class TopicConfigManager extends ConfigManager {
         }
         {
 
+            // brokerClusterName: eg: DefaultCluster
+            // 添加集群名称为一个sys topic
             String topic = this.brokerController.getBrokerConfig().getBrokerClusterName();
             TopicConfig topicConfig = new TopicConfig(topic);
             TopicValidator.addSystemTopic(topic);
+            // 1
             int perm = PermName.PERM_INHERIT;
+            // clusterTopicEnable (default: true)
             if (this.brokerController.getBrokerConfig().isClusterTopicEnable()) {
+                // 7
                 perm |= PermName.PERM_READ | PermName.PERM_WRITE;
             }
             topicConfig.setPerm(perm);
@@ -101,11 +131,16 @@ public class TopicConfigManager extends ConfigManager {
         }
         {
 
+            // 添加brokerName为一个sys topic（broker-a）
+
             String topic = this.brokerController.getBrokerConfig().getBrokerName();
             TopicConfig topicConfig = new TopicConfig(topic);
             TopicValidator.addSystemTopic(topic);
+            // 1
             int perm = PermName.PERM_INHERIT;
+            // brokerTopicEnable (default: true)
             if (this.brokerController.getBrokerConfig().isBrokerTopicEnable()) {
+                // 7
                 perm |= PermName.PERM_READ | PermName.PERM_WRITE;
             }
             topicConfig.setReadQueueNums(1);
@@ -114,6 +149,8 @@ public class TopicConfigManager extends ConfigManager {
             this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
         }
         {
+            // MixAll.OFFSET_MOVED_EVENT
+            // 添加OFFSET_MOVED_EVENT为sys topic
             String topic = TopicValidator.RMQ_SYS_OFFSET_MOVED_EVENT;
             TopicConfig topicConfig = new TopicConfig(topic);
             TopicValidator.addSystemTopic(topic);
@@ -130,7 +167,9 @@ public class TopicConfigManager extends ConfigManager {
             this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
         }
         {
+            // traceTopicEnable
             if (this.brokerController.getBrokerConfig().isTraceTopicEnable()) {
+                // 添加RMQ_SYS_TRACE_TOPIC为一个sys topic
                 String topic = this.brokerController.getBrokerConfig().getMsgTraceTopicName();
                 TopicConfig topicConfig = new TopicConfig(topic);
                 TopicValidator.addSystemTopic(topic);
@@ -436,6 +475,7 @@ public class TopicConfigManager extends ConfigManager {
 
     @Override
     public String configFilePath() {
+        // rootDir/config/topics.json
         return BrokerPathConfigHelper.getTopicConfigPath(this.brokerController.getMessageStoreConfig()
             .getStorePathRootDir());
     }

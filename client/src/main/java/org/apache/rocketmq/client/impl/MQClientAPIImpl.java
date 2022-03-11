@@ -496,6 +496,7 @@ public class MQClientAPIImpl {
     }
 
     private SendResult sendMessageSync(
+        // addr为获取的brokerAddr
         final String addr,
         final String brokerName,
         final Message msg,

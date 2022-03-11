@@ -23,6 +23,92 @@ import org.apache.rocketmq.common.DataVersion;
 import org.apache.rocketmq.common.TopicConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+/**
+ * topics.json的反序列化对象
+ *
+ * topics.json的数据如下：
+ *
+ * {
+ * 	"dataVersion":{
+ * 		"counter":7,
+ * 		"timestamp":1636355958169
+ *        },
+ * 	"topicConfigTable":{
+ * 		"SELF_TEST_TOPIC":{
+ * 			"order":false,
+ * 			"perm":6,
+ * 			"readQueueNums":1,
+ * 			"topicFilterType":"SINGLE_TAG",
+ * 			"topicName":"SELF_TEST_TOPIC",
+ * 			"topicSysFlag":0,
+ * 			"writeQueueNums":1
+ *        },
+ * 		"test-broker":{
+ * 			"order":false,
+ * 			"perm":6,
+ * 			"readQueueNums":4,
+ * 			"topicFilterType":"SINGLE_TAG",
+ * 			"topicName":"test-broker",
+ * 			"topicSysFlag":0,
+ * 			"writeQueueNums":4
+ *        },
+ * 		"DefaultCluster":{
+ * 			"order":false,
+ * 			"perm":7,
+ * 			"readQueueNums":16,
+ * 			"topicFilterType":"SINGLE_TAG",
+ * 			"topicName":"DefaultCluster",
+ * 			"topicSysFlag":0,
+ * 			"writeQueueNums":16
+ *        },
+ * 		"RMQ_SYS_TRANS_HALF_TOPIC":{
+ * 			"order":false,
+ * 			"perm":6,
+ * 			"readQueueNums":1,
+ * 			"topicFilterType":"SINGLE_TAG",
+ * 			"topicName":"RMQ_SYS_TRANS_HALF_TOPIC",
+ * 			"topicSysFlag":0,
+ * 			"writeQueueNums":1
+ *        },
+ * 		"broker-a":{
+ * 			"order":false,
+ * 			"perm":7,
+ * 			"readQueueNums":1,
+ * 			"topicFilterType":"SINGLE_TAG",
+ * 			"topicName":"broker-a",
+ * 			"topicSysFlag":0,
+ * 			"writeQueueNums":1
+ *        },
+ * 		"TBW102":{
+ * 			"order":false,
+ * 			"perm":7,
+ * 			"readQueueNums":8,
+ * 			"topicFilterType":"SINGLE_TAG",
+ * 			"topicName":"TBW102",
+ * 			"topicSysFlag":0,
+ * 			"writeQueueNums":8
+ *        },
+ * 		"BenchmarkTest":{
+ * 			"order":false,
+ * 			"perm":6,
+ * 			"readQueueNums":1024,
+ * 			"topicFilterType":"SINGLE_TAG",
+ * 			"topicName":"BenchmarkTest",
+ * 			"topicSysFlag":0,
+ * 			"writeQueueNums":1024
+ *        },
+ * 		"OFFSET_MOVED_EVENT":{
+ * 			"order":false,
+ * 			"perm":6,
+ * 			"readQueueNums":1,
+ * 			"topicFilterType":"SINGLE_TAG",
+ * 			"topicName":"OFFSET_MOVED_EVENT",
+ * 			"topicSysFlag":0,
+ * 			"writeQueueNums":1
+ *        }
+ *    }
+ * }
+ */
 public class TopicConfigSerializeWrapper extends RemotingSerializable {
     private ConcurrentMap<String, TopicConfig> topicConfigTable =
         new ConcurrentHashMap<String, TopicConfig>();

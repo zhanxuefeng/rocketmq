@@ -87,6 +87,8 @@ public class MQFaultStrategy {
             return tpInfo.selectOneMessageQueue();
         }
 
+        // 如果lastBrokerName为null，则根据index取模选一个MessageQueue
+        // 如果lastBrokerName不为null，则遍历找到第一个不与lastBrokerName相同的MessageQueue，如果找不到，则按照lastBrokerName为null来找
         return tpInfo.selectOneMessageQueue(lastBrokerName);
     }
 

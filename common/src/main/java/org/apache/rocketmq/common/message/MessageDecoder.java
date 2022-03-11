@@ -408,6 +408,7 @@ public class MessageDecoder {
         return msgExts;
     }
 
+    // key + 1(sep) + value + 2(sep)
     public static String messageProperties2String(Map<String, String> properties) {
         if (properties == null) {
             return "";

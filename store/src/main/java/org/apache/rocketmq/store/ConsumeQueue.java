@@ -33,6 +33,7 @@ public class ConsumeQueue {
 
     private final DefaultMessageStore defaultMessageStore;
 
+    // 对应多个queue文件
     private final MappedFileQueue mappedFileQueue;
     private final String topic;
     private final int queueId;

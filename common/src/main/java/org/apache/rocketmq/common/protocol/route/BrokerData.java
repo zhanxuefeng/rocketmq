@@ -23,6 +23,13 @@ import java.util.List;
 import java.util.Random;
 import org.apache.rocketmq.common.MixAll;
 
+/**
+ * 代表一个brokerName下对应的所有broker机器
+ * 在RMQ中，master和slave broker的brokerName是一致的，brokerId是不同的
+ * brokerId=0表示master，brokerId>0表示slave
+ * 该对象记录了同一个brokerName对应的所有broker机器，对应的机器信息存在于brokerAddrs属性中
+ * 不是代表一个broker机器
+ */
 public class BrokerData implements Comparable<BrokerData> {
     private String cluster;
     private String brokerName;

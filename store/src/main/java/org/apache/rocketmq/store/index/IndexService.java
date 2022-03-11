@@ -66,6 +66,7 @@ public class IndexService {
                     f.load();
 
                     if (!lastExitOK) {
+                        // 如果文件的EndTimestamp比最后文件刷盘时间要晚，则丢弃该index文件
                         if (f.getEndTimestamp() > this.defaultMessageStore.getStoreCheckpoint()
                             .getIndexMsgTimestamp()) {
                             f.destroy(0);

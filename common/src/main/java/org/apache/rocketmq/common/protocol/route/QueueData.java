@@ -20,6 +20,11 @@
  */
 package org.apache.rocketmq.common.protocol.route;
 
+/**
+ * 代表一个topic在broker上是否存在Queue，代表一个整体，不是值queueId=0，queueId=1之类的，包含了queueId=0，queueId=1。。。，queueId=n
+ * 每个readQueueNums在读取数据时会有一个MessageQueue对象
+ * 每个writeQueueNums在写入数据时会有一个MessageQueue对象
+ */
 public class QueueData implements Comparable<QueueData> {
     private String brokerName;
     private int readQueueNums;

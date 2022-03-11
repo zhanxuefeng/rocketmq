@@ -232,10 +232,13 @@ public class BrokerController {
     }
 
     public boolean initialize() throws CloneNotSupportedException {
+        // 根据rootDir/config/topics.json加载topic信息到缓存中
         boolean result = this.topicConfigManager.load();
-
+        // 根据rootDir/config/consumerOffset.json加载offset信息到缓存中
         result = result && this.consumerOffsetManager.load();
+        // 根据rootDir/config/subscriptionGroup.json加载sub信息到缓存中
         result = result && this.subscriptionGroupManager.load();
+        // 根据rootDir/config/consumerFilter.json加载filter信息到缓存中
         result = result && this.consumerFilterManager.load();
 
         if (result) {
@@ -263,6 +266,7 @@ public class BrokerController {
         if (result) {
             this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.clientHousekeepingService);
             NettyServerConfig fastConfig = (NettyServerConfig) this.nettyServerConfig.clone();
+            // 好像是VIP通道，listenPort - 2 （10911 - 2 = 10909）
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(

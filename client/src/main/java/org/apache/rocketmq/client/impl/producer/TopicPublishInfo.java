@@ -80,12 +80,14 @@ public class TopicPublishInfo {
                     return mq;
                 }
             }
+            //如果没有找到与上次不同的broker，则根据index取模再找一个，去掉lastBrokerName的限制
             return selectOneMessageQueue();
         }
     }
 
     public MessageQueue selectOneMessageQueue() {
         int index = this.sendWhichQueue.incrementAndGet();
+        // 索引取模，获取MessageQueue
         int pos = Math.abs(index) % this.messageQueueList.size();
         if (pos < 0)
             pos = 0;
