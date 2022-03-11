@@ -404,6 +404,7 @@ public class MappedFile extends ReferenceResource {
         return null;
     }
 
+    // 获取该MappedFile中从该pos到可读结束位置的ByteBuffer
     public SelectMappedBufferResult selectMappedBuffer(int pos) {
         int readPosition = getReadPosition();
         if (pos < readPosition && pos >= 0) {

@@ -488,12 +488,14 @@ public class ConsumeQueue {
         }
     }
 
+    // 获取ConsumeQueue数据，从startIndex消息偏移量开始的ByteBuffer
     public SelectMappedBufferResult getIndexBuffer(final long startIndex) {
         int mappedFileSize = this.mappedFileSize;
         long offset = startIndex * CQ_STORE_UNIT_SIZE;
         if (offset >= this.getMinLogicOffset()) {
             MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset);
             if (mappedFile != null) {
+                // offset % mappedFileSize为该offset在当前MappedFile中的相对偏移量
                 SelectMappedBufferResult result = mappedFile.selectMappedBuffer((int) (offset % mappedFileSize));
                 return result;
             }

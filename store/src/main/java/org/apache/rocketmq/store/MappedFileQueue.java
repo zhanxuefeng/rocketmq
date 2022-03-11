@@ -468,6 +468,13 @@ public class MappedFileQueue {
 
     /**
      * Finds a mapped file by offset.
+     * 根据物理偏移量，获取该偏移量所在的MappedFile
+     * 每个MappedFile映射的文件大小相同
+     * 如：
+     * MappedFile1 -> 1 - 10
+     * MappedFile2 -> 11 - 20
+     * MappedFile3 -> 21 - 30...
+     * 则18偏移量为MappedFile2
      *
      * @param offset Offset.
      * @param returnFirstOnNotFound If the mapped file is not found, then return the first one.
@@ -478,6 +485,7 @@ public class MappedFileQueue {
             MappedFile firstMappedFile = this.getFirstMappedFile();
             MappedFile lastMappedFile = this.getLastMappedFile();
             if (firstMappedFile != null && lastMappedFile != null) {
+                // 如果offset小于第一个文件的起始位点，或者大于最后一个文件的终止位点，则说明offset是错误的
                 if (offset < firstMappedFile.getFileFromOffset() || offset >= lastMappedFile.getFileFromOffset() + this.mappedFileSize) {
                     LOG_ERROR.warn("Offset not matched. Request offset: {}, firstOffset: {}, lastOffset: {}, mappedFileSize: {}, mappedFiles count: {}",
                         offset,
@@ -486,6 +494,7 @@ public class MappedFileQueue {
                         this.mappedFileSize,
                         this.mappedFiles.size());
                 } else {
+                    // 计算该offset在第几个MappedFile中
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {
@@ -493,11 +502,14 @@ public class MappedFileQueue {
                     } catch (Exception ignored) {
                     }
 
+                    // 判断一下该offset是否在这个MappedFile对应的范围内
+                    // 保险起见，可能上述的计算index方法不是很准确~~~
                     if (targetFile != null && offset >= targetFile.getFileFromOffset()
                         && offset < targetFile.getFileFromOffset() + this.mappedFileSize) {
                         return targetFile;
                     }
 
+                    // 如果上述的计算方法没找到对应的MappedFile，则遍历寻找
                     for (MappedFile tmpMappedFile : this.mappedFiles) {
                         if (offset >= tmpMappedFile.getFileFromOffset()
                             && offset < tmpMappedFile.getFileFromOffset() + this.mappedFileSize) {
