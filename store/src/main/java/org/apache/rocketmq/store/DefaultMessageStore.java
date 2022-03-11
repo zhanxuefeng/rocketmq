@@ -1368,14 +1368,17 @@ public class DefaultMessageStore implements MessageStore {
         return file.exists();
     }
 
+    // rootDir/consumequeue/topic/queueId
     private boolean loadConsumeQueue() {
         File dirLogic = new File(StorePathConfigHelper.getStorePathConsumeQueue(this.messageStoreConfig.getStorePathRootDir()));
+        // 每个目录为一个topic，目录名称是topic名称
         File[] fileTopicList = dirLogic.listFiles();
         if (fileTopicList != null) {
 
             for (File fileTopic : fileTopicList) {
                 String topic = fileTopic.getName();
 
+                //每个目录为一个ConsumeQueue，目录名称是queueId
                 File[] fileQueueIdList = fileTopic.listFiles();
                 if (fileQueueIdList != null) {
                     for (File fileQueueId : fileQueueIdList) {

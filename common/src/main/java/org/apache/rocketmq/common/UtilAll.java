@@ -212,6 +212,7 @@ public class UtilAll {
             File file = new File(path);
 
             if (!file.exists()) {
+                //commitlog和consumequeue文件目录不存在，会进入到该逻辑
                 log.error("Error when measuring disk space usage, file doesn't exist on this path: {}", path);
                 return -1;
             }

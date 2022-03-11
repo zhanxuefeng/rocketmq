@@ -20,6 +20,7 @@ import java.io.File;
 
 public class StorePathConfigHelper {
 
+    // 获取consumequeue文件存储根目录
     public static String getStorePathConsumeQueue(final String rootDir) {
         return rootDir + File.separator + "consumequeue";
     }

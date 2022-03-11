@@ -88,21 +88,28 @@ public class BrokerStartup {
     }
 
     public static BrokerController createBrokerController(String[] args) {
+        // rocketmq.remoting.version = 315
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
 
+        // com.recoketmq.remoting.socket.sndbuf.size
         if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_SNDBUF_SIZE)) {
             NettySystemConfig.socketSndbufSize = 131072;
         }
 
+        // com.rocketmq.remoting.socket.rcvbuf.size
         if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_RCVBUF_SIZE)) {
             NettySystemConfig.socketRcvbufSize = 131072;
         }
 
         try {
             //PackageConflictDetect.detectFastjson();
+            // -h -n
             Options options = ServerUtil.buildCommandlineOptions(new Options());
+            // -c -p -m
+            // -h/--help指定时打印usage，并返回null
             commandLine = ServerUtil.parseCmdLine("mqbroker", args, buildCommandlineOptions(options),
                 new PosixParser());
+            // 指定-h/--help会返回null
             if (null == commandLine) {
                 System.exit(-1);
             }
@@ -111,6 +118,8 @@ public class BrokerStartup {
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
             final NettyClientConfig nettyClientConfig = new NettyClientConfig();
 
+            //如果指定了系统变量tls.enable，则使用该值，优先级较高
+            //如果没有指定系统变量tls.enable，则使用服务端配置项tls.server.mode是否为ENFORCING得出
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
             nettyServerConfig.setListenPort(10911);
@@ -129,7 +138,12 @@ public class BrokerStartup {
                     properties = new Properties();
                     properties.load(in);
 
+                    // 设置系统属性rocketmq.namesrv.domain
+                    // 设置系统属性rocketmq.namesrv.domain.subgroup
                     properties2SystemEnv(properties);
+
+                    // 使用-c指定的配置文件中的配置项来配置Config对象中的属性
+                    // 对象中需有set方法
                     MixAll.properties2Object(properties, brokerConfig);
                     MixAll.properties2Object(properties, nettyServerConfig);
                     MixAll.properties2Object(properties, nettyClientConfig);
@@ -140,6 +154,7 @@ public class BrokerStartup {
                 }
             }
 
+            //命令行--参数设置属性，如--namesrvAddr=localhost:9876会被设置到brokerConfig对应的属性上
             MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), brokerConfig);
 
             if (null == brokerConfig.getRocketmqHome()) {
@@ -148,6 +163,8 @@ public class BrokerStartup {
             }
 
             String namesrvAddr = brokerConfig.getNamesrvAddr();
+
+            // 验证namesrvAddr是否合理
             if (null != namesrvAddr) {
                 try {
                     String[] addrArray = namesrvAddr.split(";");
@@ -162,6 +179,7 @@ public class BrokerStartup {
                 }
             }
 
+            // brokerRole属性
             switch (messageStoreConfig.getBrokerRole()) {
                 case ASYNC_MASTER:
                 case SYNC_MASTER:
@@ -182,6 +200,7 @@ public class BrokerStartup {
                 brokerConfig.setBrokerId(-1);
             }
 
+            // haListenPort为listenPort + 1 -->  10911 10912
             messageStoreConfig.setHaListenPort(nettyServerConfig.getListenPort() + 1);
             LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
             JoranConfigurator configurator = new JoranConfigurator();
@@ -189,6 +208,7 @@ public class BrokerStartup {
             lc.reset();
             configurator.doConfigure(brokerConfig.getRocketmqHome() + "/conf/logback_broker.xml");
 
+            // 解析完属性之后，可以用-p/-m将其打印出来
             if (commandLine.hasOption('p')) {
                 InternalLogger console = InternalLoggerFactory.getLogger(LoggerName.BROKER_CONSOLE_NAME);
                 MixAll.printObjectProperties(console, brokerConfig);
@@ -263,6 +283,9 @@ public class BrokerStartup {
         System.setProperty("rocketmq.namesrv.domain.subgroup", rmqAddressServerSubGroup);
     }
 
+    // -c --configFile
+    // -p --printConfigItem
+    // -m --printImportantConfig
     private static Options buildCommandlineOptions(final Options options) {
         Option opt = new Option("c", "configFile", true, "Broker config properties file");
         opt.setRequired(false);

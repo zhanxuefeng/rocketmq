@@ -41,6 +41,8 @@ public class IndexHeader {
         this.byteBuffer = byteBuffer;
     }
 
+    // 从ByteBuffer中加载indexHeader值
+    // indexHeader：8个字节的beginTimestamp + 8个字节的endTimestamp + 8个字节的beginPhyoffset + 8个字节的endPhyoffset + 4个字节的hashSlotCount + 4个字节的indexCount
     public void load() {
         this.beginTimestamp.set(byteBuffer.getLong(beginTimestampIndex));
         this.endTimestamp.set(byteBuffer.getLong(endTimestampIndex));

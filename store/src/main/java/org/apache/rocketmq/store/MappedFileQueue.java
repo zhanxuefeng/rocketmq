@@ -30,16 +30,23 @@ import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
+/**
+ * 将一个目录下的所有文件映射成一个MappedFile，存储在mappedFiles属性中
+ * 目录下的所有文件需要是固定大小mappedFileSize
+ */
 public class MappedFileQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
     private static final int DELETE_FILES_BATCH_MAX = 10;
 
+    // 存储文件目录的路径
     private final String storePath;
 
+    // 存储文件的大小
     protected final int mappedFileSize;
 
+    // 存储MappedFile对象
     protected final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
 
     private final AllocateMappedFileService allocateMappedFileService;
@@ -146,9 +153,15 @@ public class MappedFileQueue {
     }
 
 
+    /**
+     * 加载目录下的文件，构建MappedFile对象存储在mappedFiles属性中
+     * 创建了该MappedFileQueue对象之后，一般需要执行该方法将目录下的文件加载到内存中，构建成一个个的MappedFile对象
+     * @return
+     */
     public boolean load() {
         File dir = new File(this.storePath);
         File[] ls = dir.listFiles();
+        // 如果目录不存在，则不会加载任何文件，也不会创建目录
         if (ls != null) {
             return doLoad(Arrays.asList(ls));
         }
@@ -157,9 +170,12 @@ public class MappedFileQueue {
 
     public boolean doLoad(List<File> files) {
         // ascending order
+        // 文件名称有一定的规范，比喻按照当前的时间，按照字节偏移量等
         files.sort(Comparator.comparing(File::getName));
 
         for (File file : files) {
+            // 文件大小相等且需要等于mappedFileSize，否则加载失败
+            // 当存在老的数据时，不可以更改mappedFileSize重启服务
             if (file.length() != this.mappedFileSize) {
                 log.warn(file + "\t" + file.length()
                         + " length not matched message store config value, ignore it");
@@ -167,6 +183,8 @@ public class MappedFileQueue {
             }
 
             try {
+                // 构建MappedFile对象，添加到mappedFiles属性中
+                // 该对象中维护有FileChannel对象和MappedByteBuffer对象，MMAP技术的应用
                 MappedFile mappedFile = new MappedFile(file.getPath(), mappedFileSize);
 
                 mappedFile.setWrotePosition(this.mappedFileSize);

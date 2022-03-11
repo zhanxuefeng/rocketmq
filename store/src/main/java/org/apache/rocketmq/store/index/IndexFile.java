@@ -41,6 +41,7 @@ public class IndexFile {
 
     public IndexFile(final String fileName, final int hashSlotNum, final int indexNum,
         final long endPhyOffset, final long endTimestamp) throws IOException {
+        // 40 + 5000000(default) * 4 + 20000000(5000000 * 4, default) * 20 = 420000040(default) bytes
         int fileTotalSize =
             IndexHeader.INDEX_HEADER_SIZE + (hashSlotNum * hashSlotSize) + (indexNum * indexSize);
         this.mappedFile = new MappedFile(fileName, fileTotalSize);
@@ -89,10 +90,15 @@ public class IndexFile {
         return this.mappedFile.destroy(intervalForcibly);
     }
 
+    // IndexFile中插入index的过程
     public boolean putKey(final String key, final long phyOffset, final long storeTimestamp) {
+        // 判断该索引文件是否已被占满
         if (this.indexHeader.getIndexCount() < this.indexNum) {
             int keyHash = indexKeyHashMethod(key);
+            // 计算该key值在slot中的相对位置，类似HashMap中的bucket
+            // 是否可以借鉴HashMap？
             int slotPos = keyHash % this.hashSlotNum;
+            // 计算该key值在slot中的绝对位置（文件中的存储位置）
             int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
 
             FileLock fileLock = null;
@@ -101,7 +107,9 @@ public class IndexFile {
 
                 // fileLock = this.fileChannel.lock(absSlotPos, hashSlotSize,
                 // false);
+                // 获取该索引位置的值，该值为上一个该slot的索引
                 int slotValue = this.mappedByteBuffer.getInt(absSlotPos);
+                // [0, indexCount)
                 if (slotValue <= invalidIndex || slotValue > this.indexHeader.getIndexCount()) {
                     slotValue = invalidIndex;
                 }
@@ -118,27 +126,39 @@ public class IndexFile {
                     timeDiff = 0;
                 }
 
+                // 新添加索引在文件中的绝对位置
+                // 40 + 5000000(default) * 4 + indexCount * 20
+                // indexCount为已添加索引数量，索引在该文件中顺序添加
                 int absIndexPos =
                     IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                         + this.indexHeader.getIndexCount() * indexSize;
 
+                // 每个索引中放入4个字节的hashCode + 8个字节的phyOffset（CommitLog中的物理偏移量，根据该偏移量可以找到消息在commitLog文件中的存储位置）
+                // + 4个字节的timediff + 4个字节的同slot的上一个索引的偏移量
                 this.mappedByteBuffer.putInt(absIndexPos, keyHash);
                 this.mappedByteBuffer.putLong(absIndexPos + 4, phyOffset);
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8, (int) timeDiff);
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8 + 4, slotValue);
 
+                // 由于索引从0开始，因此slot中存储的为indexCount值表示当前新增的index索引
+                // 先设置slot值再自增indexCount
                 this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());
 
+                //如果是该文件中创建的第一个索引，则设置BeginPhyOffset和BeginTimestamp
                 if (this.indexHeader.getIndexCount() <= 1) {
                     this.indexHeader.setBeginPhyOffset(phyOffset);
                     this.indexHeader.setBeginTimestamp(storeTimestamp);
                 }
 
                 if (invalidIndex == slotValue) {
+                    // 自增hashSlotCount
                     this.indexHeader.incHashSlotCount();
                 }
+                // 自增indexCount，表示该indexFile中添加了一个新的index，添满了后拒绝写入
                 this.indexHeader.incIndexCount();
+                // 设置endPhyOffset，每一个新的index，都是一个endPhyOffset，空间上最后一个
                 this.indexHeader.setEndPhyOffset(phyOffset);
+                // 设置endTimestamp，每一个新的index，都是一个endTimestamp，时间上最后一个
                 this.indexHeader.setEndTimestamp(storeTimestamp);
 
                 return true;
