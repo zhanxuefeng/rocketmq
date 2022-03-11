@@ -1346,6 +1346,8 @@ public class MQClientAPIImpl {
         throw new MQBrokerException(response.getCode(), response.getRemark());
     }
 
+    // allowTopicNotExist: false
+    // 如果所有broker都不允许自动创建topic，TBW102会自动创建出来吗？
     public TopicRouteData getDefaultTopicRouteInfoFromNameServer(final String topic, final long timeoutMillis)
         throws RemotingException, MQClientException, InterruptedException {
 
@@ -1358,6 +1360,8 @@ public class MQClientAPIImpl {
         return getTopicRouteInfoFromNameServer(topic, timeoutMillis, true);
     }
 
+    // 根据topic获取路由信息
+    // 如果找到了路由信息，则返回路由信息，如果没有找到，则抛异常MQClientException
     public TopicRouteData getTopicRouteInfoFromNameServer(final String topic, final long timeoutMillis,
         boolean allowTopicNotExist) throws MQClientException, InterruptedException, RemotingTimeoutException, RemotingSendRequestException, RemotingConnectException {
         GetRouteInfoRequestHeader requestHeader = new GetRouteInfoRequestHeader();
@@ -1378,6 +1382,7 @@ public class MQClientAPIImpl {
             case ResponseCode.SUCCESS: {
                 byte[] body = response.getBody();
                 if (body != null) {
+                    // 解码topic路由信息
                     return TopicRouteData.decode(body, TopicRouteData.class);
                 }
             }

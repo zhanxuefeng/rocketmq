@@ -49,6 +49,9 @@ public class Validators {
 
     /**
      * Validate group
+     * 不能为空
+     * 正则匹配^[%|a-zA-Z0-9_-]+$
+     * 最大长度255
      */
     public static void checkGroup(String group) throws MQClientException {
         if (UtilAll.isBlank(group)) {
@@ -78,12 +81,24 @@ public class Validators {
         return matcher.matches();
     }
 
+    /**
+     * Validate message
+     * msg不能为null
+     * body不能为空
+     * body不能超过4M
+     *
+     *
+     */
     public static void checkMessage(Message msg, DefaultMQProducer defaultMQProducer)
         throws MQClientException {
         if (null == msg) {
             throw new MQClientException(ResponseCode.MESSAGE_ILLEGAL, "the message is null");
         }
         // topic
+        // 不能为空（null， empty。。。）
+        // 正则匹配：^[%|a-zA-Z0-9_-]+$
+        // 最大长度255
+        // 名称不能为：TBW102（内部自动创建topic使用）
         Validators.checkTopic(msg.getTopic());
         Validators.isNotAllowedSendTopic(msg.getTopic());
 
@@ -96,12 +111,20 @@ public class Validators {
             throw new MQClientException(ResponseCode.MESSAGE_ILLEGAL, "the message body length is zero");
         }
 
+        // msg不能超过4M
         if (msg.getBody().length > defaultMQProducer.getMaxMessageSize()) {
             throw new MQClientException(ResponseCode.MESSAGE_ILLEGAL,
                 "the message body size over max value, MAX: " + defaultMQProducer.getMaxMessageSize());
         }
     }
 
+    /**
+     * Validate topic
+     * 不能为空（null， empty。。。）
+     * 正则匹配：^[%|a-zA-Z0-9_-]+$
+     * 最大长度255
+     * 名称不能为：TBW102（内部自动创建topic使用）
+     */
     public static void checkTopic(String topic) throws MQClientException {
         if (UtilAll.isBlank(topic)) {
             throw new MQClientException("The specified topic is blank", null);

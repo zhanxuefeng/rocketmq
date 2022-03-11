@@ -34,7 +34,9 @@ import org.apache.rocketmq.remoting.protocol.LanguageCode;
  */
 public class ClientConfig {
     public static final String SEND_MESSAGE_WITH_VIP_CHANNEL_PROPERTY = "com.rocketmq.sendMessageWithVIPChannel";
+    // 从系统属性rocketmq.namesrv.addr或环境变量NAMESRV_ADDR中获取
     private String namesrvAddr = NameServerAddressUtils.getNameServerAddresses();
+    // 本地IP
     private String clientIP = RemotingUtil.getLocalAddress();
     private String instanceName = System.getProperty("rocketmq.client.name", "DEFAULT");
     private int clientCallbackExecutorThreads = Runtime.getRuntime().availableProcessors();
@@ -94,6 +96,7 @@ public class ClientConfig {
         this.instanceName = instanceName;
     }
 
+    // 如果没有指定instanceName（通过rocketmq.client.name指定），则为默认的DEFAULT，将其改为PID
     public void changeInstanceNameToPID() {
         if (this.instanceName.equals("DEFAULT")) {
             this.instanceName = UtilAll.getPid() + "#" + System.nanoTime();

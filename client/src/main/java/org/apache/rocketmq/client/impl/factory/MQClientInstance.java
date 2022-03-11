@@ -132,6 +132,7 @@ public class MQClientInstance {
         this.clientRemotingProcessor = new ClientRemotingProcessor(this);
         this.mQClientAPIImpl = new MQClientAPIImpl(this.nettyClientConfig, this.clientRemotingProcessor, rpcHook, clientConfig);
 
+        // 创建DefaultMQProducer时，setNamesrvAddr设置的localhost:9876在该处设置到NettyRemotingClient的namesrvAddrList属性中
         if (this.clientConfig.getNamesrvAddr() != null) {
             this.mQClientAPIImpl.updateNameServerAddressList(this.clientConfig.getNamesrvAddr());
             log.info("user specified name server address: {}", this.clientConfig.getNamesrvAddr());
@@ -534,6 +535,7 @@ public class MQClientInstance {
         return false;
     }
 
+    // 发送心跳信息到broker，具体逻辑后面再看
     private void sendHeartbeatToAllBroker() {
         final HeartbeatData heartbeatData = this.prepareHeartbeatData();
         final boolean producerEmpty = heartbeatData.getProducerDataSet().isEmpty();
@@ -612,14 +614,18 @@ public class MQClientInstance {
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
         DefaultMQProducer defaultMQProducer) {
         try {
+            // 锁3s
             if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     TopicRouteData topicRouteData;
+                    // 如果是默认topic（TBW102，内部自动创建topic使用）
                     if (isDefault && defaultMQProducer != null) {
+                        // 获取topic TBW102的路由信息，3s超时时间
                         topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
                             clientConfig.getMqClientApiTimeout());
                         if (topicRouteData != null) {
                             for (QueueData data : topicRouteData.getQueueDatas()) {
+                                // defaultTopicQueueNums为4，好像是自动创建topic的queueNums默认为4的原因
                                 int queueNums = Math.min(defaultMQProducer.getDefaultTopicQueueNums(), data.getReadQueueNums());
                                 data.setReadQueueNums(queueNums);
                                 data.setWriteQueueNums(queueNums);
@@ -680,6 +686,8 @@ public class MQClientInstance {
                         log.warn("updateTopicRouteInfoFromNameServer, getTopicRouteInfoFromNameServer return null, Topic: {}. [{}]", topic, this.clientId);
                     }
                 } catch (MQClientException e) {
+                    // 捕获异常，返回false
+                    // 标记：当getDefaultTopicRouteInfoFromNameServer方法调用而topic路由信息不存在时，会抛出MQClientException异常，该处能捕获到异常，不至于抛到上游方法调用
                     if (!topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                         log.warn("updateTopicRouteInfoFromNameServer Exception", e);
                     }
@@ -923,6 +931,8 @@ public class MQClientInstance {
             return false;
         }
 
+        // 同一个group下只能注册一个producer？
+        // 作用是啥？
         MQProducerInner prev = this.producerTable.putIfAbsent(group, producer);
         if (prev != null) {
             log.warn("the producer group[{}] exist already.", group);

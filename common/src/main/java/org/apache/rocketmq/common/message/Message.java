@@ -38,6 +38,8 @@ public class Message implements Serializable {
         this(topic, "", "", 0, body, true);
     }
 
+    // waitStoreMsgOK 发送消息时是否等待消息存储完成后再返回
+    // keys 空格隔开
     public Message(String topic, String tags, String keys, int flag, byte[] body, boolean waitStoreMsgOK) {
         this.topic = topic;
         this.flag = flag;
