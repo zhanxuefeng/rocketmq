@@ -46,18 +46,25 @@ public class NamesrvController {
 
     private final NettyServerConfig nettyServerConfig;
 
+    // 单线程的定时处理器
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "NSScheduledThread"));
     private final KVConfigManager kvConfigManager;
+    // 路由管理对象，使用Map管理路由信息
+    // 集群信息、broker信息、topic信息、broker心跳信息、filter信息
     private final RouteInfoManager routeInfoManager;
 
+    // Namesrv服务，用于接收producer consumer broker的连接
     private RemotingServer remotingServer;
 
+    // Broker保活服务，在channel close/channel exp/ channel idle时候做相应的处理
     private BrokerHousekeepingService brokerHousekeepingService;
 
+    // 默认8个线程，处理连接请求的业务逻辑（deleteTopic...）
     private ExecutorService remotingExecutor;
 
     private Configuration configuration;
+    // 根据MD5检测文件的变化
     private FileWatchService fileWatchService;
 
     public NamesrvController(NamesrvConfig namesrvConfig, NettyServerConfig nettyServerConfig) {
@@ -75,15 +82,23 @@ public class NamesrvController {
 
     public boolean initialize() {
 
+        // 加载kvConfig
+        // user.home/namesrv/kvConfig.json文件
         this.kvConfigManager.load();
 
+        // 构建Namesrv服务，
+        // 接收Producer Consumer Broker的连接
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
 
+        // 默认8个线程的executor
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
+        // 注册默认Processor
+        // 处理各种请求的逻辑都在里面
         this.registerProcessor();
 
+        // 定时扫描挂掉的broker，将其移除
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -92,6 +107,7 @@ public class NamesrvController {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
+        // 定时打印kvConfig
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -100,6 +116,7 @@ public class NamesrvController {
             }
         }, 1, 10, TimeUnit.MINUTES);
 
+        // 监控tls配置文件的变化，并加载变化的文件
         if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
             // Register a listener to reload SslContext
             try {
@@ -148,6 +165,7 @@ public class NamesrvController {
                 this.remotingExecutor);
         } else {
 
+            // 默认8个线程处理业务逻辑
             this.remotingServer.registerDefaultProcessor(new DefaultRequestProcessor(this), this.remotingExecutor);
         }
     }

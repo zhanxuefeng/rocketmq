@@ -312,7 +312,7 @@ public class MixAll {
 
         return properties;
     }
-
+    // 根据配置项key，设置对象中与该key相同的属性值（set方法）
     public static void properties2Object(final Properties p, final Object object) {
         Method[] methods = object.getClass().getMethods();
         for (Method method : methods) {

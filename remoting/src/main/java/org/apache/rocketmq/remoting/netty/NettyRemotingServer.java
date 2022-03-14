@@ -109,7 +109,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         this.nettyServerConfig = nettyServerConfig;
         this.channelEventListener = channelEventListener;
 
-        // serverCallbackExecutorThreads 默认0
+        // serverCallbackExecutorThreads 参数默认为0
         int publicThreadNums = nettyServerConfig.getServerCallbackExecutorThreads();
         if (publicThreadNums <= 0) {
             publicThreadNums = 4;
@@ -125,6 +125,8 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             }
         });
 
+        // eventLoopGroupBoss用于监听连接事件
+        // eventLoopGroupSelector用于监听读写事件
         if (useEpoll()) {
             this.eventLoopGroupBoss = new EpollEventLoopGroup(1, new ThreadFactory() {
                 private AtomicInteger threadIndex = new AtomicInteger(0);
@@ -166,10 +168,13 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             });
         }
 
+        // 加载Tls配置
         loadSslContext();
     }
 
     public void loadSslContext() {
+        // tls.server.mode  enforcing/permissive/disabled
+        // 默认为permissive
         TlsMode tlsMode = TlsSystemConfig.tlsMode;
         log.info("Server is running in TLS {} mode", tlsMode.getName());
 
@@ -206,6 +211,10 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                 }
             });
 
+        // handshakeHandler
+        // encoder
+        // connectionManageHandler
+        // serverHandler
         prepareSharableHandlers();
 
         ServerBootstrap childHandler =
@@ -228,21 +237,22 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                         ch.pipeline()
                                 // tls handler
                             .addLast(defaultEventExecutorGroup, HANDSHAKE_HANDLER_NAME, handshakeHandler)
+                            .addLast(defaultEventExecutorGroup,
                                 // outBoundHandler
                                 // 编码器，将RemotingCommand对象转换为ByteBuf对象
+                                encoder,
                                 // inBoundHandler
                                 // 解码器 将ByteBuf对象转换为RemotingCommand对象
+                                new NettyDecoder(),
                                 // duplexHandler
                                 // 心跳检测，serverChannelMaxIdleTimeSeconds 默认120s
+                                // 默认120s
+                                new IdleStateHandler(0, 0, nettyServerConfig.getServerChannelMaxIdleTimeSeconds()),
                                 // duplexHandler
                                 // 处理channelActive channelInactive idle exception，事件发生时，交给相应的listener处理
+                                connectionManageHandler,
                                 // inBoundHandler
                                 // 处理各种客户端的请求
-                            .addLast(defaultEventExecutorGroup,
-                                encoder,
-                                new NettyDecoder(),
-                                new IdleStateHandler(0, 0, nettyServerConfig.getServerChannelMaxIdleTimeSeconds()),
-                                connectionManageHandler,
                                 serverHandler
                             );
                     }
@@ -372,9 +382,11 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     }
 
     private void prepareSharableHandlers() {
+        // tls握手
         handshakeHandler = new HandshakeHandler(TlsSystemConfig.tlsMode);
         encoder = new NettyEncoder();
         connectionManageHandler = new NettyConnectManageHandler();
+        // 解析请求，调用process进行处理的过程
         serverHandler = new NettyServerHandler();
     }
 

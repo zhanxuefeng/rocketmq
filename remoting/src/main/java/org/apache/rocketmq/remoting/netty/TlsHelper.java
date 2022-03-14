@@ -89,8 +89,12 @@ public class TlsHelper {
     }
 
     public static SslContext buildSslContext(boolean forClient) throws IOException, CertificateException {
+        // tls.config.file   默认/etc/rocketmq/tls.properties
         File configFile = new File(TlsSystemConfig.tlsConfigFile);
+
+        // 解析配置文件，设置TlsSystemConfig静态属性值
         extractTlsConfigFromFile(configFile);
+        // 打印配置项
         logTheFinalUsedTlsConfig();
 
         SslProvider provider;
@@ -103,6 +107,7 @@ public class TlsHelper {
         }
 
         if (forClient) {
+            // 客户端
             if (tlsTestModeEnable) {
                 return SslContextBuilder
                     .forClient()
@@ -112,15 +117,16 @@ public class TlsHelper {
             } else {
                 SslContextBuilder sslContextBuilder = SslContextBuilder.forClient().sslProvider(SslProvider.JDK);
 
-
+                // 该参数控制客户端是否校验服务端的证书
                 if (!tlsClientAuthServer) {
                     sslContextBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
                 } else {
                     if (!isNullOrEmpty(tlsClientTrustCertPath)) {
+                        // 包含服务端证书的ca
                         sslContextBuilder.trustManager(new File(tlsClientTrustCertPath));
                     }
                 }
-
+                // 私钥，证书，密码
                 return sslContextBuilder.keyManager(
                     !isNullOrEmpty(tlsClientCertPath) ? new FileInputStream(tlsClientCertPath) : null,
                     !isNullOrEmpty(tlsClientKeyPath) ? decryptionStrategy.decryptPrivateKey(tlsClientKeyPath, true) : null,
@@ -128,7 +134,7 @@ public class TlsHelper {
                     .build();
             }
         } else {
-
+            // 服务端
             if (tlsTestModeEnable) {
                 SelfSignedCertificate selfSignedCertificate = new SelfSignedCertificate();
                 return SslContextBuilder
@@ -137,26 +143,33 @@ public class TlsHelper {
                     .clientAuth(ClientAuth.OPTIONAL)
                     .build();
             } else {
+                // 私钥 证书 密码
                 SslContextBuilder sslContextBuilder = SslContextBuilder.forServer(
                     !isNullOrEmpty(tlsServerCertPath) ? new FileInputStream(tlsServerCertPath) : null,
                     !isNullOrEmpty(tlsServerKeyPath) ? decryptionStrategy.decryptPrivateKey(tlsServerKeyPath, false) : null,
                     !isNullOrEmpty(tlsServerKeyPassword) ? tlsServerKeyPassword : null)
                     .sslProvider(provider);
 
+                // 改参数控制服务端是否校验客户端证书
                 if (!tlsServerAuthClient) {
                     sslContextBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
                 } else {
                     if (!isNullOrEmpty(tlsServerTrustCertPath)) {
+                        // 包含客户端证书的ca
                         sslContextBuilder.trustManager(new File(tlsServerTrustCertPath));
                     }
                 }
 
+                // 改参数控制是否需要客户端提供证书
+                // 该参数为require时，客户端需要设置证书才能连接到服务端
+                // see ClientAuth
                 sslContextBuilder.clientAuth(parseClientAuthMode(tlsServerNeedClientAuth));
                 return sslContextBuilder.build();
             }
         }
     }
 
+    // 获取配置文件中的配置项，设置到TlsSystemConfig的静态属性中
     private static void extractTlsConfigFromFile(final File configFile) {
         if (!(configFile.exists() && configFile.isFile() && configFile.canRead())) {
             LOGGER.info("Tls config file doesn't exist, skip it");
