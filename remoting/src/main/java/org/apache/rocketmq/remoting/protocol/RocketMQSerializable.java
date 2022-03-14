@@ -159,11 +159,14 @@ public class RocketMQSerializable {
         if (extFieldsLength > 0) {
             byte[] extFieldsBytes = new byte[extFieldsLength];
             headerBuffer.get(extFieldsBytes);
+
             cmd.setExtFields(mapDeserialize(extFieldsBytes));
         }
         return cmd;
     }
 
+    // 2个字节的key长度m，随后m个字节的长度为key body
+    // 4个字节的value长度n，随后n个字节的长度为value body
     public static HashMap<String, String> mapDeserialize(byte[] bytes) {
         if (bytes == null || bytes.length <= 0)
             return null;

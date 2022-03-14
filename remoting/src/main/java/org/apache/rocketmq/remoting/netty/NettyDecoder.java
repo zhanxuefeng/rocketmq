@@ -36,10 +36,13 @@ public class NettyDecoder extends LengthFieldBasedFrameDecoder {
         super(FRAME_MAX_LENGTH, 0, 4, 0, 4);
     }
 
+    // RemotingCommand 序列化之后的数据结构为： 数据总长度（4） + header长度（4） + header + body
+    // LengthFieldBasedFrameDecoder在进行解码的时候，根据前面的4个字节的数据，提取出此次需解码的数据，并去除前面的4个字节
     @Override
     public Object decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
         ByteBuf frame = null;
         try {
+            // 此处的frame已经不包含最前面4个字节的长度的数据
             frame = (ByteBuf) super.decode(ctx, in);
             if (null == frame) {
                 return null;
@@ -47,6 +50,7 @@ public class NettyDecoder extends LengthFieldBasedFrameDecoder {
 
             ByteBuffer byteBuffer = frame.nioBuffer();
 
+            // 此处的ByteBuffer中已没有了最前面的4个字节
             return RemotingCommand.decode(byteBuffer);
         } catch (Exception e) {
             log.error("decode exception, " + RemotingHelper.parseChannelRemoteAddr(ctx.channel()), e);

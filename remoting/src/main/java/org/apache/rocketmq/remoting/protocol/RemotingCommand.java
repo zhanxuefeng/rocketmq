@@ -141,9 +141,12 @@ public class RemotingCommand {
         return decode(byteBuffer);
     }
 
+    // 此处的ByteBuffer的数据结构为 header长度（4） + header + body
     public static RemotingCommand decode(final ByteBuffer byteBuffer) {
         int length = byteBuffer.limit();
         int oriHeaderLen = byteBuffer.getInt();
+        // 后三个字节才是header length
+        // 第一个字节为序列化类型
         int headerLength = getHeaderLength(oriHeaderLen);
 
         byte[] headerData = new byte[headerLength];
@@ -151,6 +154,7 @@ public class RemotingCommand {
 
         RemotingCommand cmd = headerDecode(headerData, getProtocolType(oriHeaderLen));
 
+        // 去掉header长度和header体的长度数据，剩余的数据即为body数据
         int bodyLength = length - 4 - headerLength;
         byte[] bodyData = null;
         if (bodyLength > 0) {
@@ -169,6 +173,7 @@ public class RemotingCommand {
     private static RemotingCommand headerDecode(byte[] headerData, SerializeType type) {
         switch (type) {
             case JSON:
+                // JSON.parseObject
                 RemotingCommand resultJson = RemotingSerializable.decode(headerData, RemotingCommand.class);
                 resultJson.setSerializeTypeCurrentRPC(type);
                 return resultJson;
@@ -329,6 +334,8 @@ public class RemotingCommand {
         return name;
     }
 
+    // 总的数据长度（4）+header长度（4）+header+body
+    // 因此ByteBuffer的长度为下面的4 + 1> + 2> + 3>
     public ByteBuffer encode() {
         // 1> header length size
         int length = 4;
@@ -342,12 +349,15 @@ public class RemotingCommand {
             length += body.length;
         }
 
+        // 这里的4是用来存放总的数据长度
         ByteBuffer result = ByteBuffer.allocate(4 + length);
 
         // length
         result.putInt(length);
 
         // header length
+        // 4个字节，不只是存放了header长度
+        // 第一个字节存放了序列化类型，后3个字节存放了header长度
         result.put(markProtocolType(headerData.length, serializeTypeCurrentRPC));
 
         // header data
