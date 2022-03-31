@@ -1362,7 +1362,7 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     private boolean isTempFileExist() {
-        // rootDir/about
+        // rootDir/abort
         String fileName = StorePathConfigHelper.getAbortFile(this.messageStoreConfig.getStorePathRootDir());
         File file = new File(fileName);
         return file.exists();
@@ -1370,6 +1370,7 @@ public class DefaultMessageStore implements MessageStore {
 
     // rootDir/consumequeue/topic/queueId
     private boolean loadConsumeQueue() {
+        // rootDir/consumequeue
         File dirLogic = new File(StorePathConfigHelper.getStorePathConsumeQueue(this.messageStoreConfig.getStorePathRootDir()));
         // 每个目录为一个topic，目录名称是topic名称
         File[] fileTopicList = dirLogic.listFiles();

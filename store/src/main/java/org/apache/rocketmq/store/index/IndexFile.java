@@ -29,14 +29,20 @@ import org.apache.rocketmq.store.MappedFile;
 
 public class IndexFile {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
+    // 每个hashSlot条目所占的字节数
     private static int hashSlotSize = 4;
+    // 每个index条目所占的字节数
     private static int indexSize = 20;
     private static int invalidIndex = 0;
+    // 每个index文件中hashSlot的数量，默认是5000000
     private final int hashSlotNum;
+    // 每个index文件中index的数量，默认是20000000
     private final int indexNum;
     private final MappedFile mappedFile;
     private final FileChannel fileChannel;
     private final MappedByteBuffer mappedByteBuffer;
+    // index文件的header对象，每个index文件的前40个字节为header数据
+    // 8个字节的beginTimestamp + 8个字节的endTimestamp + 8个字节的beginPhyoffset + 8个字节的endPhyoffset + 4个字节的占用slot数量 + 4个字节的占用index数据
     private final IndexHeader indexHeader;
 
     public IndexFile(final String fileName, final int hashSlotNum, final int indexNum,
@@ -150,6 +156,7 @@ public class IndexFile {
                     this.indexHeader.setBeginTimestamp(storeTimestamp);
                 }
 
+                // 如果该slot中存储的数据不是一个正常的index值，则该slot为一个新的slot
                 if (invalidIndex == slotValue) {
                     // 自增hashSlotCount
                     this.indexHeader.incHashSlotCount();

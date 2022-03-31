@@ -48,12 +48,16 @@ public class IndexService {
 
     public IndexService(final DefaultMessageStore store) {
         this.defaultMessageStore = store;
+        // 默认5_000_000
         this.hashSlotNum = store.getMessageStoreConfig().getMaxHashSlotNum();
+        // 默认 20_000_000
         this.indexNum = store.getMessageStoreConfig().getMaxIndexNum();
+        // rootDir/index/
         this.storePath =
             StorePathConfigHelper.getStorePathIndex(store.getMessageStoreConfig().getStorePathRootDir());
     }
 
+    // 根据 rootDir/abort文件判断是否异常退出（abort文件存在则是异常退出，正常退出会删除该文件）
     public boolean load(final boolean lastExitOK) {
         File dir = new File(this.storePath);
         File[] files = dir.listFiles();
@@ -66,7 +70,8 @@ public class IndexService {
                     f.load();
 
                     if (!lastExitOK) {
-                        // 如果文件的EndTimestamp比最后文件刷盘时间要晚，则丢弃该index文件
+                        // 如果索引的endTimestamp比最后文件刷盘消息时间要晚，则丢弃该index文件
+                        // 因为checkPoint文件记录了文件的最后刷盘消息时间点，如果索引文件中的endTimestamp比记录的最后刷盘消息时间还有晚，说明该索引文件构建异常，将其移除
                         if (f.getEndTimestamp() > this.defaultMessageStore.getStoreCheckpoint()
                             .getIndexMsgTimestamp()) {
                             f.destroy(0);

@@ -103,9 +103,9 @@ public class BrokerStartup {
 
         try {
             //PackageConflictDetect.detectFastjson();
-            // -h -n
+            // -h/--help -n/--namesrvAddr
             Options options = ServerUtil.buildCommandlineOptions(new Options());
-            // -c -p -m
+            // -c/--configFile -p/--printConfigItem -m/--printImportantConfig
             // -h/--help指定时打印usage，并返回null
             commandLine = ServerUtil.parseCmdLine("mqbroker", args, buildCommandlineOptions(options),
                 new PosixParser());
@@ -122,9 +122,11 @@ public class BrokerStartup {
             //如果没有指定系统变量tls.enable，则使用服务端配置项tls.server.mode是否为ENFORCING得出
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
+            // 默认端口号为10911
             nettyServerConfig.setListenPort(10911);
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
 
+            // 如果是slave，ratio设置为默认（40） - 10 = 30
             if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {
                 int ratio = messageStoreConfig.getAccessMessageInMemoryMaxRatio() - 10;
                 messageStoreConfig.setAccessMessageInMemoryMaxRatio(ratio);
@@ -196,6 +198,7 @@ public class BrokerStartup {
                     break;
             }
 
+            // enableDLegerCommitLog
             if (messageStoreConfig.isEnableDLegerCommitLog()) {
                 brokerConfig.setBrokerId(-1);
             }
@@ -206,6 +209,7 @@ public class BrokerStartup {
             JoranConfigurator configurator = new JoranConfigurator();
             configurator.setContext(lc);
             lc.reset();
+            // rocketmqHome/conf/logback_broker.xml
             configurator.doConfigure(brokerConfig.getRocketmqHome() + "/conf/logback_broker.xml");
 
             // 解析完属性之后，可以用-p/-m将其打印出来
@@ -225,6 +229,7 @@ public class BrokerStartup {
                 System.exit(0);
             }
 
+            // 记录配置项到日志文件中
             log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
             MixAll.printObjectProperties(log, brokerConfig);
             MixAll.printObjectProperties(log, nettyServerConfig);

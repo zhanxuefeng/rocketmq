@@ -22,7 +22,9 @@ public class NettyClientConfig {
      */
     private int clientWorkerThreads = NettySystemConfig.clientWorkerSize;
     private int clientCallbackExecutorThreads = Runtime.getRuntime().availableProcessors();
+    // 默认65535
     private int clientOnewaySemaphoreValue = NettySystemConfig.CLIENT_ONEWAY_SEMAPHORE_VALUE;
+    // 默认65535
     private int clientAsyncSemaphoreValue = NettySystemConfig.CLIENT_ASYNC_SEMAPHORE_VALUE;
     private int connectTimeoutMillis = NettySystemConfig.connectTimeoutMillis;
     private long channelNotActiveInterval = 1000 * 60;
