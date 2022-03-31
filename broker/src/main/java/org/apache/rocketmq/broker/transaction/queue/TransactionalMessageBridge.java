@@ -200,12 +200,18 @@ public class TransactionalMessageBridge {
         return store.asyncPutMessage(parseHalfMessageInner(messageInner));
     }
 
+    // 替换topic，Rocketmq的老套路
+    // 将原来的topic和queueId存储在msg的prop中
+    // 替换topic为RMQ_SYS_TRANS_HALF_TOPIC，替换queueId为0
     private MessageExtBrokerInner parseHalfMessageInner(MessageExtBrokerInner msgInner) {
+        // REAL_TOPIC
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_TOPIC, msgInner.getTopic());
+        // REAL_QID
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_QUEUE_ID,
             String.valueOf(msgInner.getQueueId()));
         msgInner.setSysFlag(
             MessageSysFlag.resetTransactionValue(msgInner.getSysFlag(), MessageSysFlag.TRANSACTION_NOT_TYPE));
+        // RMQ_SYS_TRANS_HALF_TOPIC
         msgInner.setTopic(TransactionalMessageUtil.buildHalfTopic());
         msgInner.setQueueId(0);
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgInner.getProperties()));
@@ -213,6 +219,9 @@ public class TransactionalMessageBridge {
     }
 
     public boolean putOpMessage(MessageExt messageExt, String opType) {
+        // messageExt为prepared msg topic=RMQ_SYS_TRANS_HALF_TOPIC queueId=0
+
+        // messageQueue: topic=RMQ_SYS_TRANS_HALF_TOPIC queueId=0
         MessageQueue messageQueue = new MessageQueue(messageExt.getTopic(),
             this.brokerController.getBrokerConfig().getBrokerName(), messageExt.getQueueId());
         if (TransactionalMessageUtil.REMOVETAG.equals(opType)) {
@@ -308,7 +317,9 @@ public class TransactionalMessageBridge {
      * @return This method will always return true.
      */
     private boolean addRemoveTagInTransactionOp(MessageExt messageExt, MessageQueue messageQueue) {
+        // topic=RMQ_SYS_TRANS_OP_HALF_TOPIC tags=d
         Message message = new Message(TransactionalMessageUtil.buildOpTopic(), TransactionalMessageUtil.REMOVETAG,
+            // body=queueOffset
             String.valueOf(messageExt.getQueueOffset()).getBytes(TransactionalMessageUtil.charset));
         writeOp(message, messageQueue);
         return true;
@@ -328,6 +339,8 @@ public class TransactionalMessageBridge {
         if (opQueue == null) {
             opQueue = new MessageQueue(TransactionalMessageUtil.buildOpTopic(), mq.getBrokerName(), mq.getQueueId());
         }
+
+        // opQueue: topic=RMQ_SYS_TRANS_OP_HALF_TOPIC queueId=0
         putMessage(makeOpMessageInner(message, opQueue));
     }
 
