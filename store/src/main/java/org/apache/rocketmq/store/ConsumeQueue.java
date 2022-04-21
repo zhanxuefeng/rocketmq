@@ -86,6 +86,10 @@ public class ConsumeQueue {
         return result;
     }
 
+    // 从倒数第3个文件开始恢复
+    // 一次遍历ConsumeQueue的每一个条目（offset，size，tagsCode）
+    // 如果offset >=0 & size > 0，则认为是有效数据，否则认为ConsumeQueue已恢复完毕，结束恢复过程
+    // 设置当前结束点为下次数据写入位置
     public void recover() {
         final List<MappedFile> mappedFiles = this.mappedFileQueue.getMappedFiles();
         if (!mappedFiles.isEmpty()) {
@@ -97,6 +101,7 @@ public class ConsumeQueue {
             int mappedFileSizeLogics = this.mappedFileSize;
             MappedFile mappedFile = mappedFiles.get(index);
             ByteBuffer byteBuffer = mappedFile.sliceByteBuffer();
+            /// 文件名称
             long processOffset = mappedFile.getFileFromOffset();
             long mappedFileOffset = 0;
             long maxExtAddr = 1;
@@ -108,6 +113,7 @@ public class ConsumeQueue {
 
                     if (offset >= 0 && size > 0) {
                         mappedFileOffset = i + CQ_STORE_UNIT_SIZE;
+                        // msg offset + msg size为commitlog中msg的最大有效数据
                         this.maxPhysicOffset = offset + size;
                         if (isExtAddr(tagsCode)) {
                             maxExtAddr = tagsCode;
@@ -119,6 +125,7 @@ public class ConsumeQueue {
                     }
                 }
 
+                // 如果相等，说明该文件的内容均为有效数据，该ConsumeQueue文件已被写满
                 if (mappedFileOffset == mappedFileSizeLogics) {
                     index++;
                     if (index >= mappedFiles.size()) {
@@ -140,7 +147,10 @@ public class ConsumeQueue {
                 }
             }
 
+            // processOffset为当前文件的起始offset， mappedFileOffset为当前文件中有效数据的offset
             processOffset += mappedFileOffset;
+
+            // processOffset + mappedFileOffset即为当前有效数据的最大offset（下次写入数据和刷新数据的offset）
             this.mappedFileQueue.setFlushedWhere(processOffset);
             this.mappedFileQueue.setCommittedWhere(processOffset);
             this.mappedFileQueue.truncateDirtyFiles(processOffset);
@@ -222,6 +232,8 @@ public class ConsumeQueue {
         return 0;
     }
 
+
+    // phyoffset commitlog中有效数据的offset
     public void truncateDirtyLogicFiles(long phyOffet) {
 
         int logicFileSize = this.mappedFileSize;
@@ -426,6 +438,8 @@ public class ConsumeQueue {
     private boolean putMessagePositionInfo(final long offset, final int size, final long tagsCode,
         final long cqOffset) {
 
+        // this.masPhysicOffset = offset + size
+        // 该逻辑判断该消息是否已被写入到ConsumeQueue中
         if (offset + size <= this.maxPhysicOffset) {
             log.warn("Maybe try to build consume queue repeatedly maxPhysicOffset={} phyOffset={}", maxPhysicOffset, offset);
             return true;

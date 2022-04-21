@@ -55,11 +55,15 @@ public class ScheduleMessageService extends ConfigManager {
 
     //根据MessageStoreConfig的messageDelayLevel解析而来
     // 默认的messageDelayLevel为：1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h
+    // 对应的queueId为            0  1  2   3   4  5  6  7  8  9  10 11 12 13  14  15  16 17
+    // 对应的delayLevel为         1  2  3   4   5  6  7  8  9  10 11 12 13 14  15  16  17 18
     // 该Map中存储的数据为{1: 1000, 2: 5000, 3: 10000...18: 2*60*60*1000}
     // 由load中调用的parseDelayLevel方法解析
     private final ConcurrentMap<Integer /* level */, Long/* delay timeMillis */> delayLevelTable =
         new ConcurrentHashMap<Integer, Long>(32);
 
+    // config/delayOffset.json存储数据
+    // {"offsetTable":{4:10}}
     private final ConcurrentMap<Integer /* level */, Long/* offset */> offsetTable =
         new ConcurrentHashMap<Integer, Long>(32);
     private final DefaultMessageStore defaultMessageStore;
@@ -107,8 +111,10 @@ public class ScheduleMessageService extends ConfigManager {
 
     // 根据延迟级别获取延迟时间，返回延迟时间+消息存储时间(消息生产时间), 此消息即为需要被消费的时间
     public long computeDeliverTimestamp(final int delayLevel, final long storeTimestamp) {
+        // 此时间为延迟时间
         Long time = this.delayLevelTable.get(delayLevel);
         if (time != null) {
+            // 延迟时间+保存时间即为需要投递的时间
             return time + storeTimestamp;
         }
 
@@ -119,6 +125,7 @@ public class ScheduleMessageService extends ConfigManager {
         if (started.compareAndSet(false, true)) {
             super.load();
             this.timer = new Timer("ScheduleMessageTimerThread", true);
+            // key:delayLevel, value:delayTimeMS
             for (Map.Entry<Integer, Long> entry : this.delayLevelTable.entrySet()) {
                 Integer level = entry.getKey();
                 Long timeDelay = entry.getValue();
@@ -129,6 +136,7 @@ public class ScheduleMessageService extends ConfigManager {
 
                 if (timeDelay != null) {
                     // 为每一个延迟队列创建一个定时任务，默认延迟时间为1s
+                    //                                                                     1000
                     this.timer.schedule(new DeliverDelayedMessageTimerTask(level, offset), FIRST_DELAY_TIME);
                 }
             }
@@ -147,6 +155,7 @@ public class ScheduleMessageService extends ConfigManager {
                         log.error("scheduleAtFixedRate flush exception", e);
                     }
                 }
+                                 // 10 * 1000ms
             }, 10000, this.defaultMessageStore.getMessageStoreConfig().getFlushDelayOffsetInterval());
         }
     }
@@ -178,6 +187,7 @@ public class ScheduleMessageService extends ConfigManager {
         return result;
     }
 
+    // 纠正delayOffset，主要是使得delayOffset在queue的minOffset和maxOffset之间
     public boolean correctDelayOffset() {
         try {
             for (int delayLevel : delayLevelTable.keySet()) {
@@ -191,12 +201,14 @@ public class ScheduleMessageService extends ConfigManager {
                 long correctDelayOffset = currentDelayOffset;
                 long cqMinOffset = cq.getMinOffsetInQueue();
                 long cqMaxOffset = cq.getMaxOffsetInQueue();
+                // 如果delayOffset小于minOffset，则设置delayOffset为minOffset
                 if (currentDelayOffset < cqMinOffset) {
                     correctDelayOffset = cqMinOffset;
                     log.error("schedule CQ offset invalid. offset={}, cqMinOffset={}, cqMaxOffset={}, queueId={}",
                         currentDelayOffset, cqMinOffset, cqMaxOffset, cq.getQueueId());
                 }
 
+                // 如果delayOffset大于maxOffset，则设置delayOffset为maxOffset
                 if (currentDelayOffset > cqMaxOffset) {
                     correctDelayOffset = cqMaxOffset;
                     log.error("schedule CQ offset invalid. offset={}, cqMinOffset={}, cqMaxOffset={}, queueId={}",
@@ -273,7 +285,7 @@ public class ScheduleMessageService extends ConfigManager {
     class DeliverDelayedMessageTimerTask extends TimerTask {
         // 延迟级别，delayLevel-1即为queueId，根据该值可以获取到queueId
         private final int delayLevel;
-        // 消息偏移量，作用为获取延迟队列中未处理的消息
+        // 消息偏移量，作用为获取延迟队列中未投递的消息
         private final long offset;
 
         public DeliverDelayedMessageTimerTask(int delayLevel, long offset) {
@@ -302,6 +314,7 @@ public class ScheduleMessageService extends ConfigManager {
 
             long result = deliverTimestamp;
 
+            // 如果当前时间 + 延迟时间 < 投递时间, 将马上投递
             long maxTimestamp = now + ScheduleMessageService.this.delayLevelTable.get(this.delayLevel);
             if (deliverTimestamp > maxTimestamp) {
                 result = now;
@@ -361,7 +374,7 @@ public class ScheduleMessageService extends ConfigManager {
 
                             long countdown = deliverTimestamp - now;
 
-                            // 如果剩余的消息<=0，说明到了投递的时间了
+                            // 如果剩余的时间<=0，说明到了投递的时间了
                             // 往原始topic投递数据
                             if (countdown <= 0) {
                                 MessageExt msgExt =
@@ -466,6 +479,7 @@ public class ScheduleMessageService extends ConfigManager {
             long tagsCodeValue =
                 MessageExtBrokerInner.tagsString2tagsCode(topicFilterType, msgInner.getTags());
             msgInner.setTagsCode(tagsCodeValue);
+            // propertiesString是后续持久化的属性数据，因此下游代码中将DELAY属性清理了，消费端获取的消息数据中也有DELAY属性
             msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgExt.getProperties()));
 
             msgInner.setSysFlag(msgExt.getSysFlag());

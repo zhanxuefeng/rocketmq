@@ -38,7 +38,9 @@ public class TransientStorePool {
 
     public TransientStorePool(final MessageStoreConfig storeConfig) {
         this.storeConfig = storeConfig;
+        // 5
         this.poolSize = storeConfig.getTransientStorePoolSize();
+        // 1G
         this.fileSize = storeConfig.getMappedFileSizeCommitLog();
         this.availableBuffers = new ConcurrentLinkedDeque<>();
     }

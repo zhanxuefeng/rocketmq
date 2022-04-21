@@ -211,6 +211,7 @@ public class IndexService {
             DispatchRequest msg = req;
             String topic = msg.getTopic();
             String keys = msg.getKeys();
+            // 如果当前的msg的offset比endPhyoffset要小的话，说明该msg已经被添加到了index文件中，无需重复添加
             if (msg.getCommitLogOffset() < endPhyOffset) {
                 return;
             }
@@ -226,6 +227,7 @@ public class IndexService {
             }
 
             if (req.getUniqKey() != null) {
+                // uniqKey 也是当做key添加到index文件，因此可以根据uniqKey查询到消息
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
                     log.error("putKey error commitlog {} uniqkey {}", req.getCommitLogOffset(), req.getUniqKey());

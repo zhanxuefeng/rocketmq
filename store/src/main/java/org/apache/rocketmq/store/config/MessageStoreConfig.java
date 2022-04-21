@@ -118,6 +118,10 @@ public class MessageStoreConfig {
     private int maxIndexNum = 5000000 * 4;
     private int maxMsgsNumBatch = 64;
     @ImportantField
+    // 异常重启过程中，会根据消息的存储时间和checkpoint的最小刷盘时间对比，如果存储时间小于最小刷盘时间，说明该消息前面的所有消息都是正常刷盘
+    // checkout中存储了CommitLog，ConsumeQueue，Index三个文件的刷盘时间
+    // 该参数false时，最小刷盘时间为CommitLog和ConsumeQueue中较小的一个时间
+    // 该参数true时，最小刷盘时间为CommitLog，ConsumeQueue，Index中最小的一个时间
     private boolean messageIndexSafe = false;
     private int haListenPort = 10912;
     private int haSendHeartbeatInterval = 1000 * 5;

@@ -447,6 +447,9 @@ public class MessageDecoder {
         return sb.toString();
     }
 
+    // key1value2key1value2...
+    // 字符1为key/value分隔符
+    // 字符2为key/value对分隔符
     public static Map<String, String> string2messageProperties(final String properties) {
         Map<String, String> map = new HashMap<String, String>();
         if (properties != null) {

@@ -51,19 +51,28 @@ public class MappedFile extends ReferenceResource {
 
     // 内存中MappedFile对象的数量
     private static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
+    // 已写数据的位置(writeBuffer/mappedByteBuffer)
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
+    // writeBuffer中已经提交至fileChannel位置
     protected final AtomicInteger committedPosition = new AtomicInteger(0);
+    // 已经刷盘的位置
     private final AtomicInteger flushedPosition = new AtomicInteger(0);
+    // 文件大小，RocketMQ文件设计为固定大小，以便于使用mmap
     protected int fileSize;
+    // 与文件相关联的FileChannel对象，writeBuffer中的数据会定时写入到该FileChannel对象中，便于进行刷盘持久化
     protected FileChannel fileChannel;
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
+    // 开启transientStorePool后，会创建堆外内存用来临时存放数据
     protected ByteBuffer writeBuffer = null;
+    // 开启transientStorePool后，堆外内存池
     protected TransientStorePool transientStorePool = null;
     private String fileName;
+    // 文件名称设计为文件所存数据的起始偏移量
     private long fileFromOffset;
     private File file;
+    // 与文件相关联的MappedByteBuffer
     private MappedByteBuffer mappedByteBuffer;
     private volatile long storeTimestamp = 0;
     private boolean firstCreateInQueue = false;
@@ -159,6 +168,7 @@ public class MappedFile extends ReferenceResource {
         this.fileFromOffset = Long.parseLong(this.file.getName());
         boolean ok = false;
 
+        // 判断目录是否存在，不存在就创建新的目录
         ensureDirOK(this.file.getParent());
 
         try {
@@ -214,6 +224,7 @@ public class MappedFile extends ReferenceResource {
             byteBuffer.position(currentPos);
             AppendMessageResult result;
             if (messageExt instanceof MessageExtBrokerInner) {
+                // fileSize - currentPos为该文件空余大小
                 result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos,
                         (MessageExtBrokerInner) messageExt, putMessageContext);
             } else if (messageExt instanceof MessageExtBatch) {
@@ -359,8 +370,11 @@ public class MappedFile extends ReferenceResource {
         return write > flush;
     }
 
+
     protected boolean isAbleToCommit(final int commitLeastPages) {
+        // 获取writeBuffer提交到fileChannel位置
         int flush = this.committedPosition.get();
+        // 获取writeBuffer写入位置
         int write = this.wrotePosition.get();
 
         if (this.isFull()) {
@@ -368,6 +382,8 @@ public class MappedFile extends ReferenceResource {
         }
 
         if (commitLeastPages > 0) {
+            // write - flush >= OS_PAGE_SIZE * commitLeastPages
+            // 最少提交commitLeastPages pageCache的数据到fileChannel中
             return ((write / OS_PAGE_SIZE) - (flush / OS_PAGE_SIZE)) >= commitLeastPages;
         }
 
