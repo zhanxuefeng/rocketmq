@@ -79,6 +79,7 @@ public class HAConnection {
     }
 
     class ReadSocketService extends ServiceThread {
+        // 1M
         private static final int READ_MAX_BUFFER_SIZE = 1024 * 1024;
         private final Selector selector;
         private final SocketChannel socketChannel;
@@ -153,14 +154,21 @@ public class HAConnection {
                 this.processPosition = 0;
             }
 
+            // 由于byteBufferRead的容量刚好为8个字节的整数倍，当hasRemaining为false的时候，表示读取的数据刚好为8个字节的整数倍，解决了粘包和拆包的问题
             while (this.byteBufferRead.hasRemaining()) {
                 try {
                     int readSize = this.socketChannel.read(this.byteBufferRead);
                     if (readSize > 0) {
                         readSizeZeroTimes = 0;
                         this.lastReadTimestamp = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now();
+                        // 如果position - processPosition >= 8说明最少新读取了8个字节的数据
                         if ((this.byteBufferRead.position() - this.processPosition) >= 8) {
+
+                            // 获取最后一个offset的数据，可能读取了到了多个请求的数据，只取最后一个
+                            // position % 8：由于拆包的存在，可能读取到了后一个请求的少量字节，该操作可以去除后一个请求的拆包的数据
+                            // pos 即为当前读取数据中最后一个正常请求（一个请求8个字节）的数据位置
                             int pos = this.byteBufferRead.position() - (this.byteBufferRead.position() % 8);
+                            // pos - 8即为offset读取的起始位置
                             long readOffset = this.byteBufferRead.getLong(pos - 8);
                             this.processPosition = pos;
 
@@ -271,6 +279,7 @@ public class HAConnection {
                         HAConnection.this.haService.getDefaultMessageStore().getCommitLogData(this.nextTransferFromWhere);
                     if (selectResult != null) {
                         int size = selectResult.getSize();
+                        // 32k
                         if (size > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaTransferBatchSize()) {
                             size = HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaTransferBatchSize();
                         }

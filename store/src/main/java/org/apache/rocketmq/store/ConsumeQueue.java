@@ -40,7 +40,9 @@ public class ConsumeQueue {
     private final ByteBuffer byteBufferIndex;
 
     private final String storePath;
+    // 默认 300000 * 20
     private final int mappedFileSize;
+    // 最大物理偏移量（消息在CommitLog中的物理偏移量，表示为最后一条消息在CommitLog中的起始offset + 消息的size）
     private long maxPhysicOffset = -1;
     private volatile long minLogicOffset = 0;
     private ConsumeQueueExt consumeQueueExt = null;
@@ -394,6 +396,7 @@ public class ConsumeQueue {
         boolean canWrite = this.defaultMessageStore.getRunningFlags().isCQWriteable();
         for (int i = 0; i < maxRetries && canWrite; i++) {
             long tagsCode = request.getTagsCode();
+            // 默认false
             if (isExtWriteEnable()) {
                 ConsumeQueueExt.CqExtUnit cqExtUnit = new ConsumeQueueExt.CqExtUnit();
                 cqExtUnit.setFilterBitMap(request.getBitMap());
@@ -451,6 +454,7 @@ public class ConsumeQueue {
         this.byteBufferIndex.putInt(size);
         this.byteBufferIndex.putLong(tagsCode);
 
+        // 期望写入的绝对偏移量
         final long expectLogicOffset = cqOffset * CQ_STORE_UNIT_SIZE;
 
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile(expectLogicOffset);
@@ -466,8 +470,10 @@ public class ConsumeQueue {
             }
 
             if (cqOffset != 0) {
+                // wrotePos + fromOffset 为ConsumeQueue的绝对物理偏移量
                 long currentLogicOffset = mappedFile.getWrotePosition() + mappedFile.getFileFromOffset();
 
+                // 期望写入的绝对物理偏移量 < 当前已写入数据的绝对物理偏移量
                 if (expectLogicOffset < currentLogicOffset) {
                     log.warn("Build  consume queue repeatedly, expectLogicOffset: {} currentLogicOffset: {} Topic: {} QID: {} Diff: {}",
                         expectLogicOffset, currentLogicOffset, this.topic, this.queueId, expectLogicOffset - currentLogicOffset);
@@ -491,6 +497,10 @@ public class ConsumeQueue {
         return false;
     }
 
+    // msgOffset: 0
+    // msgSize: MAX_INT
+    // msgTagsCode: 0
+    // untilWhere为CQ_STORE_UNIT_SIZE的整数倍
     private void fillPreBlank(final MappedFile mappedFile, final long untilWhere) {
         ByteBuffer byteBuffer = ByteBuffer.allocate(CQ_STORE_UNIT_SIZE);
         byteBuffer.putLong(0L);

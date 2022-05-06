@@ -236,6 +236,7 @@ public class IndexService {
             }
 
             if (keys != null && keys.length() > 0) {
+                // key使用空格分隔，所有的key均构建索引
                 String[] keyset = keys.split(MessageConst.KEY_SEPARATOR);
                 for (int i = 0; i < keyset.length; i++) {
                     String key = keyset[i];

@@ -77,8 +77,10 @@ public class MessageStoreConfig {
     private int destroyMapedFileIntervalForcibly = 1000 * 120;
     private int redeleteHangedFileInterval = 1000 * 120;
     // When to delete,default is at 4 am
+    // 多个时间点分号分隔
     @ImportantField
     private String deleteWhen = "04";
+    // 10 ~ 95
     private int diskMaxUsedSpaceRatio = 75;
     // The number of hours to keep a log file before deleting it (in hours)
     @ImportantField
