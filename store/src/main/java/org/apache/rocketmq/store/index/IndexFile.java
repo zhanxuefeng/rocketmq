@@ -209,8 +209,11 @@ public class IndexFile {
     }
 
     public boolean isTimeMatched(final long begin, final long end) {
+        // begin beginTimestamp endTimestamp end
         boolean result = begin < this.indexHeader.getBeginTimestamp() && end > this.indexHeader.getEndTimestamp();
+        // beginTimestamp begin endTimestamp
         result = result || (begin >= this.indexHeader.getBeginTimestamp() && begin <= this.indexHeader.getEndTimestamp());
+        // beginTimestamp end endTimestamp
         result = result || (end >= this.indexHeader.getBeginTimestamp() && end <= this.indexHeader.getEndTimestamp());
         return result;
     }
@@ -218,8 +221,10 @@ public class IndexFile {
     public void selectPhyOffset(final List<Long> phyOffsets, final String key, final int maxNum,
         final long begin, final long end, boolean lock) {
         if (this.mappedFile.hold()) {
+            // 计算当前key在hashSlot中的相对位置
             int keyHash = indexKeyHashMethod(key);
             int slotPos = keyHash % this.hashSlotNum;
+            // 获取当前key在hashSlot中的绝对位置
             int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
 
             FileLock fileLock = null;
@@ -229,6 +234,7 @@ public class IndexFile {
                     // hashSlotSize, true);
                 }
 
+                // index的相对位置
                 int slotValue = this.mappedByteBuffer.getInt(absSlotPos);
                 // if (fileLock != null) {
                 // fileLock.release();
@@ -243,6 +249,7 @@ public class IndexFile {
                             break;
                         }
 
+                        // index的绝对位置
                         int absIndexPos =
                             IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                                 + nextIndexToRead * indexSize;

@@ -951,6 +951,7 @@ public class DefaultMessageStore implements MessageStore {
                 break;
             }
 
+            // phyOffsets中存储了查询出来的消息的物理偏移量，最多maxNum个
             Collections.sort(queryOffsetResult.getPhyOffsets());
 
             queryMessageResult.setIndexLastUpdatePhyoffset(queryOffsetResult.getIndexLastUpdatePhyoffset());
@@ -962,6 +963,7 @@ public class DefaultMessageStore implements MessageStore {
                 try {
 
                     boolean match = true;
+                    // 根据物理偏移量获取消息，多余
                     MessageExt msg = this.lookMessageByOffset(offset);
                     if (0 == m) {
                         lastQueryMsgTime = msg.getStoreTimestamp();
@@ -980,6 +982,7 @@ public class DefaultMessageStore implements MessageStore {
                     if (match) {
                         SelectMappedBufferResult result = this.commitLog.getData(offset, false);
                         if (result != null) {
+                            //前面四个字节为消息的长度
                             int size = result.getByteBuffer().getInt(0);
                             result.getByteBuffer().limit(size);
                             result.setSize(size);

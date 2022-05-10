@@ -165,6 +165,7 @@ public class IndexService {
 
         long indexLastUpdateTimestamp = 0;
         long indexLastUpdatePhyoffset = 0;
+        // maxMsgsNumBatch=64(default)
         maxNum = Math.min(maxNum, this.defaultMessageStore.getMessageStoreConfig().getMaxMsgsNumBatch());
         try {
             this.readWriteLock.readLock().lock();
@@ -177,8 +178,10 @@ public class IndexService {
                         indexLastUpdatePhyoffset = f.getEndPhyOffset();
                     }
 
+                    // 时间上是否有重合
                     if (f.isTimeMatched(begin, end)) {
 
+                        // 从Index数据中查询相应的消息在commitLog中的物理偏移量，存储在phyOffsets列表中
                         f.selectPhyOffset(phyOffsets, buildKey(topic, key), maxNum, begin, end, lastFile);
                     }
 

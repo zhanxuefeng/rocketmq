@@ -82,6 +82,7 @@ public class QueryMessageProcessor extends AsyncNettyRequestProcessor implements
 
         String isUniqueKey = request.getExtFields().get(MixAll.UNIQUE_MSG_QUERY_FLAG);
         if (isUniqueKey != null && isUniqueKey.equals("true")) {
+            // 32
             requestHeader.setMaxNum(this.brokerController.getMessageStoreConfig().getDefaultQueryMaxNum());
         }
 

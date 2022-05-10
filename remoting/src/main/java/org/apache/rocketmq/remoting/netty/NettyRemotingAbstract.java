@@ -191,6 +191,8 @@ public abstract class NettyRemotingAbstract {
      */
     public void processRequestCommand(final ChannelHandlerContext ctx, final RemotingCommand cmd) {
         // processorTable的数据在NettyRemotingClient和NettyRemotingServer的registerProcessor方法中进行添加
+
+        // 获取请求对应的NettyRequestProcessor和ExecutorService
         final Pair<NettyRequestProcessor, ExecutorService> matched = this.processorTable.get(cmd.getCode());
         final Pair<NettyRequestProcessor, ExecutorService> pair = null == matched ? this.defaultRequestProcessor : matched;
         final int opaque = cmd.getOpaque();
@@ -208,6 +210,7 @@ public abstract class NettyRemotingAbstract {
                             public void callback(RemotingCommand response) {
                                 doAfterRpcHooks(remoteAddr, cmd, response);
                                 if (!cmd.isOnewayRPC()) {
+                                    // callback中如果response不为null，则将response写入到Channel中进行返回
                                     if (response != null) {
                                         response.setOpaque(opaque);
                                         response.markResponseType();
@@ -225,10 +228,12 @@ public abstract class NettyRemotingAbstract {
                         };
                         if (pair.getObject1() instanceof AsyncNettyRequestProcessor) {
                             AsyncNettyRequestProcessor processor = (AsyncNettyRequestProcessor)pair.getObject1();
+                            // 异步请求在processor处理中返回数据
                             processor.asyncProcessRequest(ctx, cmd, callback);
                         } else {
                             NettyRequestProcessor processor = pair.getObject1();
                             RemotingCommand response = processor.processRequest(ctx, cmd);
+                            // 同步Processor在callback中返回数据
                             callback.callback(response);
                         }
                     } catch (Throwable e) {
@@ -255,7 +260,6 @@ public abstract class NettyRemotingAbstract {
 
             try {
                 final RequestTask requestTask = new RequestTask(run, ctx.channel(), cmd);
-                // 用指定的executor来执行task
                 pair.getObject2().submit(requestTask);
             } catch (RejectedExecutionException e) {
                 if ((System.currentTimeMillis() % 10000) == 0) {
@@ -411,12 +415,9 @@ public abstract class NettyRemotingAbstract {
     public RemotingCommand invokeSyncImpl(final Channel channel, final RemotingCommand request,
         final long timeoutMillis)
         throws InterruptedException, RemotingSendRequestException, RemotingTimeoutException {
-        // 用来识别不同的请求，缓存请求的回应
         final int opaque = request.getOpaque();
 
         try {
-            // 构建response，并缓存起来
-            // 待收到服务端的回应，构建完整的response
             final ResponseFuture responseFuture = new ResponseFuture(channel, opaque, timeoutMillis, null, null);
             this.responseTable.put(opaque, responseFuture);
             final SocketAddress addr = channel.remoteAddress();
@@ -437,7 +438,6 @@ public abstract class NettyRemotingAbstract {
                 }
             });
 
-            // 收到服务端的回应后，会跳出该等待
             RemotingCommand responseCommand = responseFuture.waitResponse(timeoutMillis);
             if (null == responseCommand) {
                 if (responseFuture.isSendRequestOK()) {
@@ -467,6 +467,7 @@ public abstract class NettyRemotingAbstract {
                 once.release();
                 throw new RemotingTimeoutException("invokeAsyncImpl call timeout");
             }
+
             final ResponseFuture responseFuture = new ResponseFuture(channel, opaque, timeoutMillis - costTime, invokeCallback, once);
             this.responseTable.put(opaque, responseFuture);
             try {
@@ -576,10 +577,11 @@ public abstract class NettyRemotingAbstract {
         private final int maxSize = 10000;
 
         public void putNettyEvent(final NettyEvent event) {
-            if (this.eventQueue.size() <= maxSize) {
+            int currentSize = this.eventQueue.size();
+            if (currentSize <= maxSize) {
                 this.eventQueue.add(event);
             } else {
-                log.warn("event queue size[{}] enough, so drop this event {}", this.eventQueue.size(), event.toString());
+                log.warn("event queue size [{}] over the limit [{}], so drop this event {}", currentSize, maxSize, event.toString());
             }
         }
 
