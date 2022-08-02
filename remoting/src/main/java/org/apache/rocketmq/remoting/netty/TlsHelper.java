@@ -108,6 +108,7 @@ public class TlsHelper {
 
         if (forClient) {
             // 客户端
+            // tls.test.mode.enable
             if (tlsTestModeEnable) {
                 return SslContextBuilder
                     .forClient()

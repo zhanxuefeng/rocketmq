@@ -43,17 +43,23 @@ public class BrokerConfig {
     private String brokerName = localHostName();
     @ImportantField
     private String brokerClusterName = "DefaultCluster";
+
+    // 0
     @ImportantField
     private long brokerId = MixAll.MASTER_ID;
-    // 6
+    // 6 = 4 | 2
     private int brokerPermission = PermName.PERM_READ | PermName.PERM_WRITE;
     private int defaultTopicQueueNums = 8;
+
+    // 自动创建topic
     @ImportantField
     private boolean autoCreateTopicEnable = true;
 
     private boolean clusterTopicEnable = true;
 
     private boolean brokerTopicEnable = true;
+
+    // 自动创建消费者组
     @ImportantField
     private boolean autoCreateSubscriptionGroup = true;
     private String messageStorePlugIn = "";

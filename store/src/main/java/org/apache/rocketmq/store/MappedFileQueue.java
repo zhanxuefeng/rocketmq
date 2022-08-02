@@ -221,6 +221,7 @@ public class MappedFileQueue {
         MappedFile mappedFileLast = getLastMappedFile();
 
         if (mappedFileLast == null) {
+            // createOffset为包含startOffset的mappedFileSize的整数倍
             createOffset = startOffset - (startOffset % this.mappedFileSize);
         }
 

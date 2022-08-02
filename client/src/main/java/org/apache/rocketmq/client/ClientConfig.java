@@ -103,6 +103,7 @@ public class ClientConfig {
         }
     }
 
+    // namespace%resource
     public String withNamespace(String resource) {
         return NamespaceUtil.wrapNamespace(this.getNamespace(), resource);
     }

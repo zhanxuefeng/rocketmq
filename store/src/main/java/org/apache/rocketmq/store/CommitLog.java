@@ -70,6 +70,8 @@ public class CommitLog {
     protected HashMap<String/* topic-queueid */, Long/* offset */> topicQueueTable = new HashMap<String, Long>(1024);
     protected volatile long confirmOffset = -1L;
 
+    // 如果当前时间与该值相差osPageCacheBusyTimeOutMills（默认1000）毫秒以上，则任务page cache busy
+    // if (now - beginTimeInLock > osPageCacheBusyTimeOutMills) page cache busy
     private volatile long beginTimeInLock = 0;
 
     protected final PutMessageLock putMessageLock;
@@ -631,6 +633,7 @@ public class CommitLog {
         if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE
                 || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
             // Delay Delivery
+            // 延迟消息处理，替换topic和queue，重新设置properties
             if (msg.getDelayTimeLevel() > 0) {
                 if (msg.getDelayTimeLevel() > this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel()) {
                     msg.setDelayTimeLevel(this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel());
@@ -662,6 +665,7 @@ public class CommitLog {
         }
 
         PutMessageThreadLocal putMessageThreadLocal = this.putMessageThreadLocal.get();
+        // 锁外序列化消息数据，放入preEncoderBuffer中缓存，避免占用锁时间，提升性能
         PutMessageResult encodeResult = putMessageThreadLocal.getEncoder().encode(msg);
         if (encodeResult != null) {
             return CompletableFuture.completedFuture(encodeResult);
@@ -674,6 +678,7 @@ public class CommitLog {
 
         putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
         try {
+            // 获取最后一个文件，有可能不存在
             MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
             this.beginTimeInLock = beginLockTimestamp;
@@ -682,7 +687,7 @@ public class CommitLog {
             // global
             msg.setStoreTimestamp(beginLockTimestamp);
 
-            // CommitLog文件写满之后，需要重新创建一个新的文件
+            // CommitLog文件不存在或者写满之后，需要重新创建一个新的文件
             if (null == mappedFile || mappedFile.isFull()) {
                 mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise
             }
@@ -1324,6 +1329,15 @@ public class CommitLog {
             this.maxMessageSize = size;
         }
 
+        /**
+         *
+         * @param fileFromOffset
+         * @param byteBuffer
+         * @param maxBlank 文件中剩余的可写字节数量
+         * @param msgInner
+         * @param putMessageContext
+         * @return END_OF_FILE/PUT_OK
+         */
         public AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer, final int maxBlank,
             final MessageExtBrokerInner msgInner, PutMessageContext putMessageContext) {
             // STORETIMESTAMP + STOREHOSTADDRESS + OFFSET <br>
@@ -1368,6 +1382,8 @@ public class CommitLog {
             final int msgLen = preEncodeBuffer.getInt(0);
 
             // Determines whether there is sufficient free space
+            // 如果文件剩余空间不足以写入消息
+            // 则写入一个BLANK_MAGIC_CODE，消息长度为maxBlank（而不是4），实际上只写入四个字节的BLANK_MAGIC_CODE
             if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
                 this.msgStoreItemMemory.clear();
                 // 1 TOTALSIZE

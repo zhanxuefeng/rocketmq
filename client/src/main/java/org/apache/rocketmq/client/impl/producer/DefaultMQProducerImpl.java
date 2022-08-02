@@ -36,6 +36,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.alibaba.fastjson.JSON;
 import org.apache.rocketmq.client.QueryResult;
 import org.apache.rocketmq.client.Validators;
 import org.apache.rocketmq.client.common.ClientErrorCode;
@@ -105,16 +107,20 @@ public class DefaultMQProducerImpl implements MQProducerInner {
     private final ArrayList<SendMessageHook> sendMessageHookList = new ArrayList<SendMessageHook>();
     private final ArrayList<EndTransactionHook> endTransactionHookList = new ArrayList<EndTransactionHook>();
     private final RPCHook rpcHook;
+
     private final BlockingQueue<Runnable> asyncSenderThreadPoolQueue;
     private final ExecutorService defaultAsyncSenderExecutor;
+
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
         @Override
         public Thread newThread(Runnable r) {
             return new Thread(r, "RequestHouseKeepingService");
         }
     });
+
     protected BlockingQueue<Runnable> checkRequestQueue;
     protected ExecutorService checkExecutor;
+
     private ServiceState serviceState = ServiceState.CREATE_JUST;
     private MQClientInstance mQClientFactory;
     private ArrayList<CheckForbiddenHook> checkForbiddenHookList = new ArrayList<CheckForbiddenHook>();
@@ -238,6 +244,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
         this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
 
+        // 定时清理过期的请求
         this.startScheduledTask();
 
     }
@@ -606,7 +613,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             MessageQueue mq = null; // 记录每次重试指定的MessageQueue
             Exception exception = null;
             SendResult sendResult = null;
-            // 异步的次数咋说？
+            // 异步的次数咋说？                                                                          // 2
             int timesTotal = communicationMode == CommunicationMode.SYNC ? 1 + this.defaultMQProducer.getRetryTimesWhenSendFailed() : 1;
             int times = 0;
 
@@ -648,6 +655,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                                     // FLUSH_SLAVE_TIMEOUT,
                                     // SLAVE_NOT_AVAILABLE,
                                     // 因为该状态多表示broker级别的问题，如果该topic存在于多个broker，重试之后选择了其他的broker，很有可能就发送成功了
+                                    // 默认false
                                     if (this.defaultMQProducer.isRetryAnotherBrokerWhenNotStoreOK()) {
                                         continue;
                                     }
@@ -739,6 +747,9 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
     //根据topic名称获取topic路由信息
     private TopicPublishInfo tryToFindTopicPublishInfo(final String topic) {
+        System.out.println("-------------------------");
+        System.out.println(JSON.toJSONString(this.topicPublishInfoTable));
+        System.out.println("-------------------------");
         // 先从本地缓存中获取
         TopicPublishInfo topicPublishInfo = this.topicPublishInfoTable.get(topic);
         // ok：MessageQueue不为空（null，empty）

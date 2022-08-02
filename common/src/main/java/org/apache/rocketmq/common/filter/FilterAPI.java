@@ -41,16 +41,20 @@ public class FilterAPI {
         subscriptionData.setTopic(topic);
         subscriptionData.setSubString(subString);
 
+        // null, *, ""都表示消费所有消息
         if (null == subString || subString.equals(SubscriptionData.SUB_ALL) || subString.length() == 0) {
             subscriptionData.setSubString(SubscriptionData.SUB_ALL);
         } else {
+            // ||分割需要过滤的tag
             String[] tags = subString.split("\\|\\|");
             if (tags.length > 0) {
                 for (String tag : tags) {
                     if (tag.length() > 0) {
                         String trimString = tag.trim();
                         if (trimString.length() > 0) {
+                            // 存放tag
                             subscriptionData.getTagsSet().add(trimString);
+                            // 存放tag hashcode
                             subscriptionData.getCodeSet().add(trimString.hashCode());
                         }
                     }

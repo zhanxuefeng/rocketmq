@@ -87,6 +87,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * balances; Conversely, if the broadcasting is set, each consumer client will consume all subscribed messages
      * separately.
      * </p>
+     * 集群模式：同一条消息只能被同一个消费者组的一个消费者消费
+     * 广播模式：同一条消息被同一个消费者组的所有消费者消费
      *
      * This field defaults to clustering.
      */
@@ -135,6 +137,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Queue allocation algorithm specifying how message queues are allocated to each consumer clients.
+     * 默认为均分
      */
     private AllocateMessageQueueStrategy allocateMessageQueueStrategy;
 

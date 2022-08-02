@@ -70,12 +70,14 @@ public class TopicPublishInfo {
         if (lastBrokerName == null) {
             return selectOneMessageQueue();
         } else {
+            // 循环遍历取可以取到所有值
             for (int i = 0; i < this.messageQueueList.size(); i++) {
                 int index = this.sendWhichQueue.incrementAndGet();
                 int pos = Math.abs(index) % this.messageQueueList.size();
                 if (pos < 0)
                     pos = 0;
                 MessageQueue mq = this.messageQueueList.get(pos);
+                // 如果当前mq在lastBrokerName上，则继续取下一个，直到找到一个不在lastBrokeName上的mq
                 if (!mq.getBrokerName().equals(lastBrokerName)) {
                     return mq;
                 }

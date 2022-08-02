@@ -422,6 +422,8 @@ public class DefaultMessageStore implements MessageStore {
             this.printTimes.set(0);
         }
 
+
+        // now - beginTimeInLock > osPageCacheBusyTimeOutMillis
         if (this.isOSPageCacheBusy()) {
             return PutMessageStatus.OS_PAGECACHE_BUSY;
         }
@@ -513,6 +515,7 @@ public class DefaultMessageStore implements MessageStore {
         long begin = this.getCommitLog().getBeginTimeInLock();
         long diff = this.systemClock.now() - begin;
 
+        // 正常情况下 begin = 0， 此时diff > 10000000
         return diff < 10000000
                 // 1000
             && diff > this.messageStoreConfig.getOsPageCacheBusyTimeOutMills();
